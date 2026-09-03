@@ -311,6 +311,7 @@ tr.gekozen td,td.gekozen,.gekozen.lbl,.gekozen.val{background:var(--accent-soft)
       <button class="tab" role="tab" id="tab-bieren" aria-selected="false" data-view="bieren">Alle bieren</button>
       <button class="tab" role="tab" id="tab-profiel" aria-selected="false" data-view="profiel">Profielen</button>
       <button class="tab" role="tab" id="tab-bbq" aria-selected="false" data-view="bbq">BBQ</button>
+      <button class="tab" role="tab" id="tab-proef" aria-selected="false" data-view="proef">Te proeven</button>
     </div>
     <div class="navmeta" id="navmeta"></div>
   </div>
@@ -501,6 +502,44 @@ tr.gekozen td,td.gekozen,.gekozen.lbl,.gekozen.val{background:var(--accent-soft)
   <div class="prof-grid" id="bbqgrid" style="margin-top:20px"></div>
 </main>
 
+<!-- ============ NOG TE PROEVEN ============ -->
+<main id="view-proef" role="tabpanel" aria-labelledby="tab-proef" hidden>
+  <h1>Nog te proeven</h1>
+  <p class="lede">Houd een lijst tegen jullie vijf lijsten aan en zie meteen welke bieren nog niemand heeft gehad. Standaard staat er een lijst klassiekers klaar; hieronder kun je een eigen lijst laden.</p>
+
+  <div class="stats" id="proefstats"></div>
+
+  <div class="controls">
+    <div class="ctl">
+      <input type="search" id="proefzoek" placeholder="Zoek in de proeflijst…" aria-label="Zoek in de proeflijst">
+    </div>
+    <div class="ctl">
+      <label style="align-self:center">Toon</label>
+      <div class="chips" id="proefchips"></div>
+    </div>
+  </div>
+
+  <div class="telling" id="proeftelling"></div>
+
+  <div class="tablescroll lang">
+    <table id="proeftabel">
+      <thead><tr id="proefkop"></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="leeg-melding" id="proefleeg" hidden>Geen bier voldoet aan dit filter.</div>
+  </div>
+
+  <div class="importbox">
+    <h3>Een eigen proeflijst laden</h3>
+    <p>Vervang de meegeleverde lijst door een eigen CSV — een festivalprogramma, een top-100, een bucketlist. Verplichte kolom <span class="mono">bier</span>; <span class="mono">brouwerij, stijl, abv</span> zijn optioneel maar maken het vergelijken betrouwbaarder. De lijst blijft in je eigen browser en gaat nergens naartoe.</p>
+    <div class="importrij">
+      <input type="file" id="proefbestand" accept=".csv,text/csv" aria-label="CSV-bestand kiezen">
+      <button class="btn" id="proefwis">Terug naar de meegeleverde lijst</button>
+    </div>
+    <div class="melding" id="proefmelding"></div>
+  </div>
+</main>
+
 <footer>
   Samengesteld uit de volledige Untappd-bierlijsten, opgehaald op 31 augustus 2026. Deze pagina werkt zonder internet — alle gegevens zitten in het bestand zelf.<br>
   Toegevoegde lijsten worden alleen in je eigen browser bewaard en gaan nergens naartoe.
@@ -685,6 +724,7 @@ function ganaar(view, stijl){
   document.getElementById("view-bieren").hidden = view !== "bieren";
   document.getElementById("view-profiel").hidden = view !== "profiel";
   document.getElementById("view-bbq").hidden = view !== "bbq";
+  document.getElementById("view-proef").hidden = view !== "proef";
   if (stijl != null) {
     if (typeof stijl === "string") { filters.hoofd = stijl; filters.stijl = ""; }
     else { filters.hoofd = null; filters.stijl = stijl.sub; }
@@ -693,10 +733,11 @@ function ganaar(view, stijl){
   if (view === "bieren") tekenBieren();
   if (view === "profiel") tekenProfiel();
   if (view === "bbq") tekenBbq();
+  if (view === "proef") tekenProef();
   verberg();
   scrollTo({top:0, behavior:"instant"});
   const q = filters.hoofd ? "?stijl=" + encodeURIComponent(filters.hoofd) : filters.stijl ? "?sub=" + encodeURIComponent(filters.stijl) : "";
-  location.hash = view === "bieren" ? "#bieren" + (stijl != null ? q : "") : view === "profiel" ? "#profiel" : view === "bbq" ? "#bbq" : "#stijlkaart";
+  location.hash = view === "bieren" ? "#bieren" + (stijl != null ? q : "") : view === "profiel" ? "#profiel" : view === "bbq" ? "#bbq" : view === "proef" ? "#proeven" : "#stijlkaart";
 }
 function zetStijlKies(){
   const sel = document.getElementById("stijlkies");
@@ -1427,6 +1468,260 @@ function tekenBbq(){
   });
 }
 
+/* ---------- nog te proeven ---------- */
+/* meegeleverde startlijst met klassiekers: zelf samengesteld, geen externe bron, vrij te delen */
+const PROEF_OPSLAG = "bieratlas.proef.v1";
+const PROEF_START = [
+  ["Westvleteren 12","Brouwerij Westvleteren","Belgian Quadrupel","10.2"],
+  ["Westvleteren Blond","Brouwerij Westvleteren","Belgian Blonde","5.8"],
+  ["Rochefort 10","Brasserie de Rochefort","Belgian Quadrupel","11.3"],
+  ["Rochefort 8","Brasserie de Rochefort","Belgian Strong Dark Ale","9.2"],
+  ["Orval","Brasserie d'Orval","Pale Ale - Belgian","6.2"],
+  ["Chimay Grande Réserve","Bières de Chimay","Belgian Strong Dark Ale","9"],
+  ["Westmalle Tripel","Brouwerij Westmalle","Belgian Tripel","9.5"],
+  ["Westmalle Dubbel","Brouwerij Westmalle","Belgian Dubbel","7"],
+  ["La Trappe Quadrupel","Bierbrouwerij De Koningshoeven","Belgian Quadrupel","10"],
+  ["Zundert 8","Trappistenbrouwerij De Kievit","Belgian Strong Dark Ale","8"],
+  ["St. Bernardus Abt 12","Brouwerij St. Bernardus","Belgian Quadrupel","10"],
+  ["Straffe Hendrik Quadrupel","Brouwerij De Halve Maan","Belgian Quadrupel","11"],
+  ["Gouden Carolus Cuvée van de Keizer Imperial Dark","Brouwerij Het Anker","Belgian Strong Dark Ale","11"],
+  ["Tripel Karmeliet","Brouwerij Bosteels","Belgian Tripel","8.4"],
+  ["Duvel","Duvel Moortgat","Belgian Strong Golden Ale","8.5"],
+  ["Pauwel Kwak","Brouwerij Bosteels","Belgian Strong Dark Ale","8.4"],
+  ["Gulden Draak","Brouwerij Van Steenberge","Belgian Strong Dark Ale","10.5"],
+  ["Delirium Tremens","Brouwerij Huyghe","Belgian Strong Golden Ale","8.5"],
+  ["La Chouffe","Brasserie d'Achouffe","Belgian Strong Golden Ale","8"],
+  ["Oerbier","De Dolle Brouwers","Belgian Strong Dark Ale","9"],
+  ["Saison Dupont","Brasserie Dupont","Farmhouse Ale - Saison","6.5"],
+  ["Fantôme Saison","Brasserie Fantôme","Farmhouse Ale - Saison","8"],
+  ["Malheur 12","Brouwerij Malheur","Belgian Quadrupel","12"],
+  ["Cantillon Gueuze 100% Lambic Bio","Brasserie Cantillon","Lambic - Gueuze","5.5"],
+  ["Cantillon Kriek 100% Lambic","Brasserie Cantillon","Lambic - Kriek","5.5"],
+  ["Oude Geuze","Brouwerij 3 Fonteinen","Lambic - Gueuze","6"],
+  ["Oude Geuze Boon Mariage Parfait","Brouwerij Boon","Lambic - Gueuze","8"],
+  ["Rodenbach Grand Cru","Brouwerij Rodenbach","Sour - Flanders Red Ale","6"],
+  ["Duchesse de Bourgogne","Brouwerij Verhaeghe","Sour - Flanders Red Ale","6.2"],
+  ["Liefmans Goudenband","Liefmans","Sour - Flanders Oud Bruin","8"],
+  ["Hertog Jan Grand Prestige","Hertog Jan Brouwerij","Barleywine - Other","10"],
+  ["Columbus","Brouwerij 't IJ","Strong Ale","9"],
+  ["Zatte","Brouwerij 't IJ","Belgian Tripel","8"],
+  ["Hemel & Aarde","Brouwerij De Molen","Stout - Imperial / Double","10"],
+  ["Hel & Verdoemenis","Brouwerij De Molen","Stout - Imperial / Double","10"],
+  ["Caramel Fudge Stout","Brouwerij Kees","Stout - Imperial / Double Pastry","11.5"],
+  ["Bird of Prey IPA","Uiltje Brewing Company","IPA - American","5.8"],
+  ["Thai Thai","Oedipus Brewing","Belgian Tripel","8"],
+  ["Jopen Koyt","Jopen","Historical Beer - Kuit / Kuyt / Koyt","8.5"],
+  ["Skuumkoppe","Texelse Bierbrouwerij","Wheat Beer - Dunkelweizen","6"],
+  ["Aecht Schlenkerla Rauchbier Märzen","Brauerei Heller-Trum","Rauchbier","5.1"],
+  ["Aventinus","Schneider Weisse","Bock - Weizenbock","8.2"],
+  ["Celebrator","Ayinger Privatbrauerei","Bock - Doppelbock","6.7"],
+  ["Hefeweissbier","Weihenstephaner","Wheat Beer - Hefeweizen","5.4"],
+  ["Pilsner Urquell","Plzeňský Prazdroj","Pilsner - Czech","4.4"],
+  ["Lagerbier Hell","Augustiner-Bräu","Lager - Helles","5.2"],
+  ["Original Ritterguts Gose","Ritterguts","Sour - Gose","4.7"],
+  ["Fuller's ESB","Fuller's","Bitter - Extra Special / Strong (ESB)","5.9"],
+  ["Oatmeal Stout","Samuel Smith's","Stout - Oatmeal","5"],
+  ["Guinness Draught","Guinness","Stout - Irish Dry","4.2"],
+  ["Pliny the Elder","Russian River Brewing","IPA - Imperial / Double","8"],
+  ["Heady Topper","The Alchemist","IPA - Imperial / Double New England / Hazy","8"],
+  ["Sierra Nevada Pale Ale","Sierra Nevada Brewing","Pale Ale - American","5.6"],
+  ["KBS","Founders Brewing","Stout - Imperial / Double","12"],
+  ["90 Minute IPA","Dogfish Head","IPA - Imperial / Double","9"],
+  ["3 Monts","Brasserie de Saint-Sylvestre","Farmhouse Ale - Bière de Garde","8.5"]
+].map(r => ({n:r[0], b:r[1], s:r[2], a:r[3]}));
+
+let proefExtra = null;
+try { proefExtra = JSON.parse(localStorage.getItem(PROEF_OPSLAG) || "null"); } catch(e){ proefExtra = null; }
+let PROEFDATA = null;                      // gematchte lijst; null = opnieuw berekenen
+let proefFilter = "niemand", proefZoek = "";
+let proefSort = {k:"aant", op:true};
+
+/* namen verschillen altijd nét tussen lijsten ("St. Bernardus Abt 12" vs "Abt 12"), dus we
+   vergelijken op woorden: alle naamwoorden van het proefbier moeten terugkomen in naam+brouwerij
+   van een eigen bier, en minstens één brouwerijwoord moet kloppen */
+const PROEF_STOP = new Set(["de","het","een","the","la","le","les","du","der","des","van","von","und","and","en",
+  "bier","biere","beer","ale","brouwerij","brasserie","brewery","brewing","brauerei","brau","co","company","cie",
+  "st","sint","saint","abdij","abbaye","abbey","trappist","trappisten","trappistes"]);
+const proefTokens = s => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+  .replace(/[^a-z0-9]+/g," ").split(" ").filter(t => (t.length > 1 || /\d/.test(t)) && !PROEF_STOP.has(t));
+
+/* woorden die op een andere variant wijzen: staat zo'n woord wél in het eigen bier maar
+   niet in het proefbier, dan is het een ander bier ("Chouffe IPA" is geen "La Chouffe").
+   "blond(e)" hoort hier bewust niet bij: dat is vaak gewoon de volle naam van het vlaggenschip
+   ("La Chouffe Blonde" ís La Chouffe) */
+const PROEF_MARKER = new Set(["ipa","tripel","triple","dubbel","double","quadrupel","quad",
+  "bruin","brune","dark","donker","stout","porter","rouge","red","rood","wit","white","weizen","hop",
+  "gose","fruit","kriek","framboise","barrel","nitro","session","lite","light","zero","free",
+  "alcoholvrij","alcoholarm","0","00"]);
+/* hele naam als frase, mét lidwoorden: "la chouffe" ⊂ "la chouffe blonde" is een sterk signaal */
+const proefZin = s => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+  .replace(/[^a-z0-9]+/g," ").trim();
+const inZin = (kort, lang) => !!kort && !!lang && (" " + lang + " ").includes(" " + kort + " ");
+
+function matchProeflijst(){
+  const bron = proefExtra || PROEF_START;
+  const idx = RIJEN.map(o => ({o, set:new Set([...proefTokens(o.n), ...proefTokens(o.b)]), zin:proefZin(o.n)}));
+  PROEFDATA = bron.map(p => {
+    const nt = proefTokens(p.n), bt = proefTokens(p.b), eigen = new Set([...nt, ...bt]);
+    const pz = proefZin(p.n);
+    let best = null, bestScore = 0;
+    if (nt.length) for (const {o, set, zin} of idx){
+      let ok = true;
+      for (const t of nt) if (!set.has(t)) { ok = false; break; }
+      if (!ok) continue;
+      if (bt.length && !bt.some(t => set.has(t))) continue;
+      const ont = proefTokens(o.n);
+      if (ont.some(t => !eigen.has(t) && PROEF_MARKER.has(t))) continue;
+      // voorkeur voor de kaalste kandidaat ("Duvel" boven "Duvel Barrel Aged"),
+      // en een bonus als de ene naam letterlijk in de andere zit
+      let terug = 0; for (const t of ont) if (eigen.has(t)) terug++;
+      const score = 1 + (ont.length ? terug/ont.length : 0) + (inZin(pz, zin) || inZin(zin, pz) ? 1 : 0);
+      if (score > bestScore){ bestScore = score; best = o; }
+    }
+    return {n:p.n, b:p.b || "", s:p.s || "", abv:parseFloat(p.a), m:best, aant:best ? best.aant : 0};
+  });
+}
+
+const PROEFKOL = [
+  {k:"n",    t:"Bier",      l:true, cls:"bier"},
+  {k:"b",    t:"Brouwerij", l:true, cls:"brouw"},
+  {k:"s",    t:"Stijl",     l:true, cls:"stijl"},
+  {k:"abv",  t:"ABV",       f:v=>isNaN(v)?"—":nl(v,1)+"%"},
+  {k:"aant", t:"Wie al",    wie:true}
+];
+function tekenProefKop(){
+  const tr = document.getElementById("proefkop"); tr.textContent = "";
+  PROEFKOL.forEach(c => {
+    const th = document.createElement("th");
+    th.className = c.l ? "l" : "";
+    th.innerHTML = (c.wie ? `Wie al <span class="hint" style="text-transform:none;letter-spacing:0">(${NAMEN.filter((_,i)=>AANWEZIG[i]).map(n=>n[0]).join(" ")})</span>` : c.t)
+      + (proefSort.k === c.k ? `<span class="arw">${proefSort.op ? "▲" : "▼"}</span>` : "");
+    th.addEventListener("click", () => {
+      if (proefSort.k === c.k) proefSort.op = !proefSort.op;
+      else { proefSort.k = c.k; proefSort.op = (c.k === "n" || c.k === "b" || c.k === "s" || c.k === "aant"); }
+      tekenProefKop(); tekenProef();
+    });
+    tr.appendChild(th);
+  });
+}
+
+function tekenProef(){
+  if (!PROEFDATA) matchProeflijst();
+  const alles = PROEFDATA;
+  const niemand = alles.filter(p => !p.m);
+  const gehad = alles.filter(p => p.m);
+  const iedereen = gehad.filter(p => p.aant === K());
+
+  document.getElementById("proefstats").innerHTML = [
+    ["Op de proeflijst", String(alles.length), proefExtra ? "eigen lijst" : "meegeleverde klassiekers"],
+    ["Nog niemand", String(niemand.length), "die zoeken jullie nog"],
+    ["Al gedronken", String(gehad.length), "door minstens één van de vijf"],
+    ["Door iedereen", String(iedereen.length), "compleet afgevinkt"]
+  ].map(([l,v,f]) => `<div class="card stat"><p class="lab">${l}</p><p class="val">${v}</p><p class="fig">${f}</p></div>`).join("");
+
+  const ch = document.getElementById("proefchips"); ch.textContent = "";
+  [["niemand","Nog niemand",niemand.length],["gehad","Al gedronken",gehad.length],["alles","Alles",alles.length]].forEach(([k,t,n]) => {
+    const b = maakChip(t, n, proefFilter === k);
+    b.addEventListener("click", () => { proefFilter = k; tekenProef(); });
+    ch.appendChild(b);
+  });
+
+  const q = proefZoek.trim().toLowerCase();
+  let data = alles.filter(p => proefFilter === "alles" || (proefFilter === "niemand" ? !p.m : !!p.m));
+  if (q) data = data.filter(p => p.n.toLowerCase().includes(q) || p.b.toLowerCase().includes(q) || p.s.toLowerCase().includes(q));
+
+  const {k, op} = proefSort;
+  const ontbreekt = v => v == null || v === "" || (typeof v === "number" && isNaN(v));
+  data = [...data].sort((a,b) => {
+    const x = a[k], y = b[k];
+    let r;
+    if (typeof x === "string" || typeof y === "string") r = op ? String(x).localeCompare(String(y),"nl") : String(y).localeCompare(String(x),"nl");
+    else if (ontbreekt(x) && ontbreekt(y)) r = 0;
+    else if (ontbreekt(x)) r = 1;
+    else if (ontbreekt(y)) r = -1;
+    else r = op ? x - y : y - x;
+    return r || a.n.localeCompare(b.n,"nl");
+  });
+
+  const tb = document.querySelector("#proeftabel tbody"); tb.textContent = "";
+  const fr = document.createDocumentFragment();
+  for (const p of data) {
+    const tr = document.createElement("tr");
+    PROEFKOL.forEach(c => {
+      const td = document.createElement("td");
+      if (c.l) td.className = "l " + (c.cls || "");
+      if (c.wie) {
+        const w = p.m ? p.m.w : 0;
+        td.innerHTML = `<span class="wie">${NAMEN.map((nm,i) =>
+          `<i class="${!AANWEZIG[i] ? "leeg" : (w & (1<<i) ? "aan" : "")}" title="${nm}"></i>`).join("")}</span>`;
+      } else {
+        const v = p[c.k];
+        td.textContent = c.f ? c.f(v) : v;
+        td.title = c.f ? "" : v;
+      }
+      tr.appendChild(td);
+    });
+    let html;
+    if (p.m) {
+      const wieTekst = NAMEN.filter((_,i) => p.m.w & (1<<i)).join(", ") || "niemand";
+      const cijfers = NAMEN.map((nm,i) => p.m.c[i] ? `${nm} ${p.m.c[i]}` : null).filter(Boolean).join(" · ") || "geen cijfers";
+      html = `<b>${esc(p.n)}</b><br>${esc(p.b)}${p.s ? " · " + esc(p.s) : ""}<br>
+        in jullie lijsten als: ${esc(p.m.n)} (${esc(p.m.b)})<br>
+        gedronken door ${wieTekst}<br><span style="opacity:.72">${cijfers}</span>`;
+    } else {
+      html = `<b>${esc(p.n)}</b><br>${esc(p.b)}${p.s ? " · " + esc(p.s) : ""}${isNaN(p.abv) ? "" : " · " + nl(p.abv,1) + "%"}<br>
+        <span style="opacity:.72">nog door niemand van jullie gedronken</span>`;
+    }
+    koppel(tr, html, p.m ? [{t:"In de lijst opzoeken", f:() => zoekBierInLijst(p.m)}] : []);
+    fr.appendChild(tr);
+  }
+  tb.appendChild(fr);
+  document.getElementById("proefleeg").hidden = data.length > 0;
+
+  const stukken = [`<strong style="color:var(--ink)">${data.length}</strong> van ${alles.length} op de proeflijst`];
+  if (proefFilter !== "alles") stukken.push(proefFilter === "niemand" ? "nog door niemand gedronken" : "al gedronken");
+  if (q) stukken.push(`zoekterm: ${esc(q)}`);
+  document.getElementById("proeftelling").innerHTML = stukken.join(" &nbsp;·&nbsp; ");
+}
+
+document.getElementById("proefzoek").addEventListener("input", e => { proefZoek = e.target.value; tekenProef(); });
+document.getElementById("proefbestand").addEventListener("change", ev => {
+  const f = ev.target.files[0]; if (!f) return;
+  const m = document.getElementById("proefmelding");
+  const lezer = new FileReader();
+  lezer.onload = () => {
+    try{
+      const tabel = leesCsv(String(lezer.result).replace(/^﻿/, ""));
+      const kop = tabel[0].map(h => h.trim().toLowerCase());
+      const kol = n => kop.indexOf(n);
+      const iB = kol("bier"), iBr = kol("brouwerij"), iS = kol("stijl"), iA = kol("abv");
+      if (iB < 0) throw new Error("kolom bier is verplicht");
+      const rijen = tabel.slice(1).filter(r => r[iB]).map(r => ({
+        n:r[iB].trim(), b:(iBr>=0?r[iBr]:"" ).trim(), s:(iS>=0?r[iS]:"").trim(), a:(iA>=0?r[iA]:"").trim()
+      }));
+      if (!rijen.length) throw new Error("geen bierregels gevonden");
+      proefExtra = rijen;
+      localStorage.setItem(PROEF_OPSLAG, JSON.stringify(proefExtra));
+      PROEFDATA = null;
+      tekenProef();
+      m.className = "melding ok";
+      m.textContent = `${rijen.length} bieren geladen als proeflijst.`;
+    } catch (e){
+      m.className = "melding fout";
+      m.textContent = "Kon het bestand niet lezen: " + e.message;
+    }
+    ev.target.value = "";
+  };
+  lezer.readAsText(f);
+});
+document.getElementById("proefwis").addEventListener("click", () => {
+  proefExtra = null; try { localStorage.removeItem(PROEF_OPSLAG); } catch(e){}
+  PROEFDATA = null;
+  tekenProef();
+  const m = document.getElementById("proefmelding");
+  m.className = "melding ok"; m.textContent = "Eigen lijst gewist; de meegeleverde klassiekers staan weer klaar.";
+});
+
 /* ---------- events ---------- */
 document.getElementById("asview").addEventListener("change", tekenKaart);
 document.getElementById("minbier").addEventListener("change", () => { tekenKaart(); tekenStijlTabel(); });
@@ -1452,8 +1747,9 @@ function herbouw(){
   bouwDataset();
   if (drill && !RIJEN.some(o => o.h === drill)) drill = null;
   berekenStijlen();
+  PROEFDATA = null;                       // eigen lijsten veranderd -> proeflijst opnieuw matchen
   bouwFamChips(); bouwWieChips(); bouwStijlKies(); bouwImport(); bouwProfChips();
-  tekenKruimel(); tekenStats(); tekenStijlKop(); tekenStijlTabel(); tekenKaart(); tekenBierKop(); tekenBieren(); tekenProfiel(); tekenBbq();
+  tekenKruimel(); tekenStats(); tekenStijlKop(); tekenStijlTabel(); tekenKaart(); tekenBierKop(); tekenBieren(); tekenProfiel(); tekenBbq(); tekenProefKop(); tekenProef();
 }
 herbouw();
 if (AANRAKEN) {
@@ -1467,6 +1763,7 @@ if (h.startsWith("#bieren")){
   ganaar("bieren", m ? decodeURIComponent(m[1]) : ms ? {sub: decodeURIComponent(ms[1])} : null);
 } else if (h.startsWith("#profiel")) ganaar("profiel");
 else if (h.startsWith("#bbq")) ganaar("bbq");
+else if (h.startsWith("#proeven")) ganaar("proef");
 addEventListener("resize", () => { clearTimeout(window.__rt); window.__rt = setTimeout(tekenKaart, 180); });
 </script>
 </body>
