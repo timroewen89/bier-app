@@ -1,4 +1,4 @@
-# Bieratlas
+# Hoe fini di da? bier app
 
 Een zelfstandige single-page webapp (één HTML-bestand, geen dependencies) om de bierlijsten van de proefgroep te verkennen: filter op stijl, familie, brouwerij of proever, bekijk scores in de kaartweergave, vergelijk smaakprofielen en zie op het BBQ-tabblad welke bierstijlen bij welk vlees of welke vis van de barbecue passen — met aanraders uit de eigen lijsten. Het tabblad "Te proeven" houdt een referentielijst (meegeleverde klassiekers, of een eigen CSV zoals een festivalprogramma of top-100) tegen de vijf lijsten aan en laat zien welke bieren nog niemand heeft gehad.
 
