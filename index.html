@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Vijf bierlijsten naast elkaar: stijlkaart, alle bieren, smaakprofielen, bbq-stijladvies en een proeflijst met wat nog niemand heeft gehad.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍺</text></svg>">
 <title>Hoe fini di da? bier app</title>
 <style>
 :root{
@@ -39,7 +41,7 @@ body{
 .tab{
   font-family:var(--font);font-size:12.5px;letter-spacing:.08em;text-transform:uppercase;
   background:none;border:0;border-bottom:2px solid transparent;color:var(--ink-3);
-  padding:10px 12px;cursor:pointer;
+  padding:10px 12px;cursor:pointer;white-space:nowrap;
 }
 .tab[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent);font-weight:600}
 .tab:hover{color:var(--accent)}
@@ -257,8 +259,10 @@ tr.gekozen td,td.gekozen,.gekozen.lbl,.gekozen.val{background:var(--accent-soft)
   .wrap{padding:0 14px 60px}
   .navin{padding:0 14px;gap:6px 14px;min-height:50px}
   .brand{flex:1 1 100%;padding-top:10px}
-  .tabs{width:100%;justify-content:space-between}
-  .tab{padding:10px 6px 11px;font-size:12px;letter-spacing:.06em;flex:1 1 0;text-align:center}
+  /* vijf tabs passen niet meer geplet naast elkaar: laat ze horizontaal scrollen */
+  .tabs{width:100%;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{padding:10px 10px 11px;font-size:12px;letter-spacing:.06em;flex:0 0 auto;text-align:center}
   .navmeta{display:none}
   h1{margin:24px 0 10px}
   .lede{font-size:16.5px}
@@ -732,6 +736,10 @@ function ganaar(view, stijl){
   if (stijl != null) {
     if (typeof stijl === "string") { filters.hoofd = stijl; filters.stijl = ""; }
     else { filters.hoofd = null; filters.stijl = stijl.sub; }
+    // een sprong naar de lijst neemt oude zoek-, aantal- en familiefilters niet mee
+    filters.zoek = ""; document.getElementById("zoek").value = "";
+    filters.aantal = ""; document.getElementById("aantalkies").value = "";
+    filters.fam = null; bouwFamChips();
     zetStijlKies();
   }
   if (view === "bieren") tekenBieren();
@@ -746,6 +754,12 @@ function ganaar(view, stijl){
 function zetStijlKies(){
   const sel = document.getElementById("stijlkies");
   sel.value = filters.hoofd ? "h:" + filters.hoofd : filters.stijl ? "s:" + filters.stijl : "";
+}
+/* sprong naar de bierlijst vanaf een ander tabblad: wie-filter expliciet meegeven of wissen */
+function naarBieren(stijl, wie){
+  filters.wie = wie || new Set();
+  bouwWieChips();
+  ganaar("bieren", stijl);
 }
 document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => ganaar(t.dataset.view)));
 
@@ -786,9 +800,9 @@ function stijlTip(d){
 }
 /* de acties bij een stijl; de eerste is wat een klik op desktop doet */
 function stijlActies(d){
-  if (drill) return [{t:`Bieren in ${d.h}`, f:() => ganaar("bieren", {sub: d.vol})}];
-  if (d.nSub > 1) return [{t:`${d.nSub} substijlen bekijken`, f:() => drillNaar(d.h)}, {t:`Alle ${d.n} bieren`, f:() => ganaar("bieren", d.h)}];
-  return [{t:`Alle ${d.n} bieren`, f:() => ganaar("bieren", d.h)}];
+  if (drill) return [{t:`Bieren in ${d.h}`, f:() => naarBieren({sub: d.vol})}];
+  if (d.nSub > 1) return [{t:`${d.nSub} substijlen bekijken`, f:() => drillNaar(d.h)}, {t:`Alle ${d.n} bieren`, f:() => naarBieren(d.h)}];
+  return [{t:`Alle ${d.n} bieren`, f:() => naarBieren(d.h)}];
 }
 /* "Tim 2,77 · Mark 4,15": de laagste en hoogste beoordelaar, met hun ruwe gemiddelde */
 function verschilTekst(s){
@@ -820,7 +834,7 @@ function tekenKruimel(){
     <span>${hs.n} bieren in ${hs.nSub} substijlen · ${hs.f}</span>
     <span class="sep">·</span> <span class="link" id="kruimellijst">alle ${drill}-bieren in de lijst</span>`;
   document.getElementById("terugknop").addEventListener("click", drillTerug);
-  document.getElementById("kruimellijst").addEventListener("click", () => ganaar("bieren", drill));
+  document.getElementById("kruimellijst").addEventListener("click", () => naarBieren(drill));
 }
 
 function tekenKaart(){
@@ -1184,6 +1198,9 @@ function bouwImport(){
   sel.innerHTML = NAMEN.map((n,i) => `<option value="${n}"${!AANWEZIG[i] ? " selected" : ""}>${n}</option>`).join("");
 }
 function leesCsv(tekst){
+  // Nederlandse Excel exporteert met puntkomma's: kies het teken dat de kopregel het vaakst gebruikt
+  const kopregel = tekst.slice(0, (tekst + "\n").indexOf("\n")).replace(/"[^"]*"/g, "");
+  const sep = (kopregel.match(/;/g) || []).length > (kopregel.match(/,/g) || []).length ? ";" : ",";
   const rijen = []; let veld = "", rij = [], inQ = false;
   for (let i = 0; i < tekst.length; i++){
     const ch = tekst[i];
@@ -1191,13 +1208,14 @@ function leesCsv(tekst){
       if (ch === '"'){ if (tekst[i+1] === '"'){ veld += '"'; i++; } else inQ = false; }
       else veld += ch;
     } else if (ch === '"') inQ = true;
-    else if (ch === ","){ rij.push(veld); veld = ""; }
+    else if (ch === sep){ rij.push(veld); veld = ""; }
     else if (ch === "\n"){ rij.push(veld); rijen.push(rij); rij = []; veld = ""; }
     else if (ch !== "\r") veld += ch;
   }
   if (veld || rij.length){ rij.push(veld); rijen.push(rij); }
   return rijen.filter(r => r.some(v => v !== ""));
 }
+const deciPunt = s => /^\d+,\d+$/.test(s) ? s.replace(",", ".") : s;   // "8,5" -> "8.5"
 document.getElementById("importbestand").addEventListener("change", ev => {
   const f = ev.target.files[0]; if (!f) return;
   const m = document.getElementById("importmelding");
@@ -1211,7 +1229,7 @@ document.getElementById("importbestand").addEventListener("change", ev => {
       if (iB < 0 || iBr < 0 || iS < 0) throw new Error("kolommen bier, brouwerij en stijl zijn verplicht");
       const rijen = tabel.slice(1).filter(r => r[iB]).map(r => ({
         n:r[iB].trim(), b:(r[iBr]||"").trim(), s:(r[iS]||"Other").trim(),
-        a:(iA>=0?r[iA]:"" ).trim(), c:(iC>=0?r[iC]:"").trim()
+        a:deciPunt((iA>=0?r[iA]:"" ).trim()), c:deciPunt((iC>=0?r[iC]:"").trim())
       }));
       if (!rijen.length) throw new Error("geen bierregels gevonden");
       const wie = document.getElementById("importwie").value;
@@ -1294,7 +1312,7 @@ function tekenProfiel(){
     const val = document.createElement("div"); val.className = "val"; val.textContent = nl(v,1) + "%";
     const html = `<b>${esc(s.h)}</b><br>${esc(nm)}: ${s.perPersoon[i]} bieren, ${nl(v,1)}% van zijn lijst<br>groep gemiddeld ${nl(g,1)}%<br>
       <span style="opacity:.72">${NAMEN.map((n,j) => AANWEZIG[j] ? `${n} ${nl(s.aandeel[j],1)}%` : null).filter(Boolean).join(" · ")}</span>`;
-    const acties = [{t:`Bieren van ${nm} in ${s.h}`, f:() => { filters.wie = new Set([i]); bouwWieChips(); ganaar("bieren", s.h); }}];
+    const acties = [{t:`Bieren van ${nm} in ${s.h}`, f:() => naarBieren(s.h, new Set([i]))}];
     [lbl, tr, val].forEach(e => { koppel(e, html, acties); bars.appendChild(e); });
   });
 
@@ -1308,7 +1326,7 @@ function tekenProfiel(){
   favEl.innerHTML = beoord.slice(0,5).map(s => li(s, true)).join("") || "<li>te weinig cijfers</li>";
   afEl.innerHTML = beoord.slice(-3).reverse().filter(s => s.relPer[i] < 0).map(s => li(s, false)).join("") || "<li>geen stijl onder zijn gemiddelde</li>";
   [favEl, afEl].forEach(ul => ul.querySelectorAll(".naam").forEach(e =>
-    e.addEventListener("click", () => { filters.wie = new Set([i]); bouwWieChips(); ganaar("bieren", e.dataset.h); })));
+    e.addEventListener("click", () => naarBieren(e.dataset.h, new Set([i])))));
 
   /* witte vlekken met aanraders van de anderen */
   const vlek = document.getElementById("prof-vlekken"); vlek.textContent = "";
@@ -1326,7 +1344,7 @@ function tekenProfiel(){
     d.innerHTML = `<div class="kop"><b class="stijlklik" data-h="${esc(s.h)}">${esc(s.h)}</b>
         <span>${s.perPersoon[i] ? "1 bier" : "nog nooit"} · groep ${s.n} bieren, cijfer ${nl(s.gemCij,2)}</span></div>
       <p class="tips">${kand.length ? "Aanraders: " + kand.map(x => `<i>${esc(x.o.n)}</i> (${esc(x.o.b)}) ${nl(x.m,2)} door ${NAMEN.filter((_,j) => j !== i && x.o.cn[j] != null).join(", ")}`).join(" · ") : "geen bier in deze stijl dat de anderen goed genoeg vonden om aan te raden"}</p>`;
-    d.querySelector(".stijlklik").addEventListener("click", () => { filters.wie.clear(); bouwWieChips(); ganaar("bieren", s.h); });
+    d.querySelector(".stijlklik").addEventListener("click", () => naarBieren(s.h));
     vlek.appendChild(d);
   });
 
@@ -1382,7 +1400,7 @@ function tekenHeat(){
       }
       td.innerHTML = `<div class="box ${kl}">${tekst}</div>`;
       const html = `<b>${esc(NAMEN[j])} · ${esc(s.h)}</b><br>${tipTekst}`;
-      koppel(td, html, s.perPersoon[j] ? [{t:`Bieren van ${NAMEN[j]} in ${s.h}`, f:() => { filters.wie = new Set([j]); bouwWieChips(); ganaar("bieren", s.h); }}] : []);
+      koppel(td, html, s.perPersoon[j] ? [{t:`Bieren van ${NAMEN[j]} in ${s.h}`, f:() => naarBieren(s.h, new Set([j]))}] : []);
       tr.appendChild(td);
     });
     fr.appendChild(tr);
@@ -1445,7 +1463,7 @@ function tekenBbq(){
     d.stijlen.forEach(h => {
       const st = HOOFDSTAT.find(s => s.h === h);
       const b = maakChip(h, st ? st.n : null, false);
-      if (st) b.addEventListener("click", () => ganaar("bieren", h));
+      if (st) b.addEventListener("click", () => naarBieren(h));
       else { b.disabled = true; b.style.opacity = ".45"; b.title = "nog geen bier van deze stijl in de lijsten"; }
       chips.appendChild(b);
     });
@@ -1639,6 +1657,7 @@ let PROEFDATA = null;                      // gematchte lijst; null = opnieuw be
 let proefFilter = "niemand", proefZoek = "", proefStijl = "";
 let proefSort = {k:"aant", op:true};
 
+/* --- match-kern: puur en zonder DOM, getest door test/match.test.js --- */
 /* namen verschillen altijd nét tussen lijsten ("St. Bernardus Abt 12" vs "Abt 12"), dus we
    vergelijken op woorden: alle naamwoorden van het proefbier moeten terugkomen in naam+brouwerij
    van een eigen bier, en minstens één brouwerijwoord moet kloppen */
@@ -1661,29 +1680,39 @@ const proefZin = s => String(s || "").toLowerCase().normalize("NFD").replace(/[\
   .replace(/[^a-z0-9]+/g," ").trim();
 const inZin = (kort, lang) => !!kort && !!lang && (" " + lang + " ").includes(" " + kort + " ");
 
+function maakProefIndex(rijen){
+  return rijen.map(o => ({o, set:new Set([...proefTokens(o.n), ...proefTokens(o.b)]), zin:proefZin(o.n)}));
+}
+/* beste kandidaat uit de index voor één proefbier {n, b}, of null */
+function vindMatch(p, idx){
+  const nt = proefTokens(p.n), bt = proefTokens(p.b), eigen = new Set([...nt, ...bt]);
+  const pz = proefZin(p.n);
+  let best = null, bestScore = 0;
+  if (nt.length) for (const {o, set, zin} of idx){
+    let ok = true;
+    for (const t of nt) if (!set.has(t)) { ok = false; break; }
+    if (!ok) continue;
+    if (bt.length && !bt.some(t => set.has(t))) continue;
+    const ont = proefTokens(o.n);
+    if (ont.some(t => !eigen.has(t) && PROEF_MARKER.has(t))) continue;
+    // extra woorden in de kandidaat die het proefbier niet noemt ("Stone Delicious IPA"
+    // bij "Stone IPA") zijn alleen oké als de ene naam letterlijk in de andere zit
+    // ("Gulden Draak Classic" bij "Gulden Draak")
+    const zinBonus = inZin(pz, zin) || inZin(zin, pz);
+    let terug = 0; for (const t of ont) if (eigen.has(t)) terug++;
+    if (terug < ont.length && !zinBonus) continue;
+    const score = 1 + (ont.length ? terug/ont.length : 0) + (zinBonus ? 1 : 0);
+    if (score > bestScore){ bestScore = score; best = o; }
+  }
+  return best;
+}
+/* --- einde match-kern --- */
+
 function matchProeflijst(){
   const bron = proefExtra || PROEF_START;
-  const idx = RIJEN.map(o => ({o, set:new Set([...proefTokens(o.n), ...proefTokens(o.b)]), zin:proefZin(o.n)}));
+  const idx = maakProefIndex(RIJEN);
   PROEFDATA = bron.map(p => {
-    const nt = proefTokens(p.n), bt = proefTokens(p.b), eigen = new Set([...nt, ...bt]);
-    const pz = proefZin(p.n);
-    let best = null, bestScore = 0;
-    if (nt.length) for (const {o, set, zin} of idx){
-      let ok = true;
-      for (const t of nt) if (!set.has(t)) { ok = false; break; }
-      if (!ok) continue;
-      if (bt.length && !bt.some(t => set.has(t))) continue;
-      const ont = proefTokens(o.n);
-      if (ont.some(t => !eigen.has(t) && PROEF_MARKER.has(t))) continue;
-      // extra woorden in de kandidaat die het proefbier niet noemt ("Stone Delicious IPA"
-      // bij "Stone IPA") zijn alleen oké als de ene naam letterlijk in de andere zit
-      // ("Gulden Draak Classic" bij "Gulden Draak")
-      const zinBonus = inZin(pz, zin) || inZin(zin, pz);
-      let terug = 0; for (const t of ont) if (eigen.has(t)) terug++;
-      if (terug < ont.length && !zinBonus) continue;
-      const score = 1 + (ont.length ? terug/ont.length : 0) + (zinBonus ? 1 : 0);
-      if (score > bestScore){ bestScore = score; best = o; }
-    }
+    const best = vindMatch(p, idx);
     return {n:p.n, b:p.b || "", s:p.s || "", hs:(p.s || "").split(" - ")[0].trim(),
             abv:parseFloat(p.a), m:best, aant:best ? best.aant : 0};
   });
@@ -1823,7 +1852,7 @@ document.getElementById("proefbestand").addEventListener("change", ev => {
       const iB = kol("bier"), iBr = kol("brouwerij"), iS = kol("stijl"), iA = kol("abv");
       if (iB < 0) throw new Error("kolom bier is verplicht");
       const rijen = tabel.slice(1).filter(r => r[iB]).map(r => ({
-        n:r[iB].trim(), b:(iBr>=0?r[iBr]:"" ).trim(), s:(iS>=0?r[iS]:"").trim(), a:(iA>=0?r[iA]:"").trim()
+        n:r[iB].trim(), b:(iBr>=0?r[iBr]:"" ).trim(), s:(iS>=0?r[iS]:"").trim(), a:deciPunt((iA>=0?r[iA]:"").trim())
       }));
       if (!rijen.length) throw new Error("geen bierregels gevonden");
       proefExtra = rijen;
