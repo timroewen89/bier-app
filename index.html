@@ -1487,7 +1487,7 @@ const PROEF_START = [
   ["La Trappe Quadrupel","Bierbrouwerij De Koningshoeven","Belgian Quadrupel","10"],
   ["Zundert 8","Trappistenbrouwerij De Kievit","Belgian Strong Dark Ale","8"],
   ["St. Bernardus Abt 12","Brouwerij St. Bernardus","Belgian Quadrupel","10"],
-  ["Straffe Hendrik Quadrupel","Brouwerij De Halve Maan","Belgian Quadrupel","11"],
+  ["Straffe Hendrik Brugs Quadrupel Bier","Brouwerij De Halve Maan","Belgian Quadrupel","11"],
   ["Gouden Carolus Cuvée van de Keizer Imperial Dark","Brouwerij Het Anker","Belgian Strong Dark Ale","11"],
   ["Tripel Karmeliet","Brouwerij Bosteels","Belgian Tripel","8.4"],
   ["Duvel","Duvel Moortgat","Belgian Strong Golden Ale","8.5"],
@@ -1531,7 +1531,106 @@ const PROEF_START = [
   ["Sierra Nevada Pale Ale","Sierra Nevada Brewing","Pale Ale - American","5.6"],
   ["KBS","Founders Brewing","Stout - Imperial / Double","12"],
   ["90 Minute IPA","Dogfish Head","IPA - Imperial / Double","9"],
-  ["3 Monts","Brasserie de Saint-Sylvestre","Farmhouse Ale - Bière de Garde","8.5"]
+  ["3 Monts","Brasserie de Saint-Sylvestre","Farmhouse Ale - Bière de Garde","8.5"],
+  // trappisten & abdij, tweede lichting
+  ["Chimay Cinq Cents","Bières de Chimay","Belgian Tripel","8"],
+  ["Chimay Première","Bières de Chimay","Belgian Dubbel","7"],
+  ["Rochefort 6","Brasserie de Rochefort","Belgian Strong Dark Ale","7.5"],
+  ["Achel Blond","Brouwerij De Achelse Kluis","Belgian Strong Golden Ale","8"],
+  ["Achel Bruin","Brouwerij De Achelse Kluis","Belgian Strong Dark Ale","8"],
+  ["Tynt Meadow","Mount Saint Bernard Abbey","Belgian Strong Dark Ale","7.4"],
+  ["Mont des Cats","Abbaye du Mont des Cats","Belgian Strong Dark Ale","7.6"],
+  ["La Trappe Tripel","Bierbrouwerij De Koningshoeven","Belgian Tripel","8"],
+  ["La Trappe Isid'or","Bierbrouwerij De Koningshoeven","Belgian Strong Dark Ale","7.5"],
+  ["Zundert 10","Trappistenbrouwerij De Kievit","Belgian Quadrupel","10"],
+  ["Westmalle Extra","Brouwerij Westmalle","Belgian Enkel / Patersbier","4.8"],
+  ["St. Bernardus Tripel","Brouwerij St. Bernardus","Belgian Tripel","8"],
+  ["St. Bernardus Wit","Brouwerij St. Bernardus","Wheat Beer - Witbier","5.5"],
+  // belgisch, buiten de abdijmuren
+  ["Houblon Chouffe","Brasserie d'Achouffe","IPA - Belgian","9"],
+  ["Mc Chouffe","Brasserie d'Achouffe","Belgian Strong Dark Ale","8"],
+  ["Piraat","Brouwerij Van Steenberge","Belgian Strong Golden Ale","10.5"],
+  ["Kasteel Donker","Brouwerij Van Honsebrouck","Belgian Quadrupel","11"],
+  ["Bush Ambrée","Brasserie Dubuisson","Belgian Strong Dark Ale","12"],
+  ["DeuS Brut des Flandres","Brouwerij Bosteels","Bière de Champagne / Bière Brut","11.5"],
+  ["Malheur Bière Brut","Brouwerij Malheur","Bière de Champagne / Bière Brut","11"],
+  ["Taras Boulba","Brasserie de la Senne","Pale Ale - Belgian","4.5"],
+  ["XX Bitter","Brouwerij De Ranke","IPA - Belgian","6.2"],
+  ["Guldenberg","Brouwerij De Ranke","Belgian Tripel","8"],
+  ["Moinette Blonde","Brasserie Dupont","Belgian Strong Golden Ale","8.5"],
+  ["Avec les Bons Vœux","Brasserie Dupont","Farmhouse Ale - Saison","9.5"],
+  ["Tripel van de Garre","Brouwerij Van Steenberge","Belgian Tripel","11"],
+  ["St. Feuillien Tripel","Brasserie St-Feuillien","Belgian Tripel","8.5"],
+  // lambiek & zuur, tweede lichting
+  ["Oude Geuze Tilquin à l'Ancienne","Gueuzerie Tilquin","Lambic - Gueuze","6.4"],
+  ["Oud Beersel Oude Geuze","Brouwerij Oud Beersel","Lambic - Gueuze","6"],
+  ["Lindemans Oude Geuze Cuvée René","Brouwerij Lindemans","Lambic - Gueuze","5.5"],
+  ["Boon Oude Kriek","Brouwerij Boon","Lambic - Kriek","6.5"],
+  ["3 Fonteinen Oude Kriek","Brouwerij 3 Fonteinen","Lambic - Kriek","6"],
+  ["Petrus Aged Pale","Brouwerij De Brabandere","Sour - Other","7.3"],
+  ["Berliner Kindl Weisse","Berliner-Kindl-Schultheiss-Brauerei","Sour - Berliner Weisse","3"],
+  ["Żywiec Porter","Browar Żywiec","Porter - Baltic","9.5"],
+  // nederlandse iconen, tweede lichting
+  ["Bommen & Granaten","Brouwerij De Molen","Barleywine - Other","11.9"],
+  ["Rasputin","Brouwerij De Molen","Stout - Russian Imperial","10.4"],
+  ["Van Vollenhoven Extra Stout","Van Vollenhoven & Co","Stout - Other","6.5"],
+  ["Christoffel Blond","Brouwerij St. Christoffel","Pilsner - Other","6"],
+  ["Gulpener Ur-Pilsner","Gulpener Bierbrouwerij","Pilsner - German","5"],
+  ["Mooie Nel IPA","Jopen","IPA - American","6.5"],
+  ["Jacobus RPA","Jopen","Rye Beer","5.3"],
+  ["Handlanger","Kompaan","IPA - Imperial / Double","8.2"],
+  ["Mannenliefde","Oedipus Brewing","Farmhouse Ale - Saison","6"],
+  ["Dr. Raptor","Uiltje Brewing Company","IPA - Imperial / Double","8.5"],
+  ["Playground Non Alcoholic IPA","vandeStreek bier","Non-Alcoholic - IPA","0.5"],
+  ["IJwit","Brouwerij 't IJ","Wheat Beer - Witbier","6.5"],
+  ["Natte","Brouwerij 't IJ","Belgian Dubbel","6.5"],
+  // duits & tsjechisch, tweede lichting
+  ["Rothaus Tannenzäpfle","Badische Staatsbrauerei Rothaus","Pilsner - German","5.1"],
+  ["Jever Pilsener","Friesisches Brauhaus zu Jever","Pilsner - German","4.9"],
+  ["Tegernseer Hell","Brauhaus Tegernsee","Lager - Helles","4.8"],
+  ["Andechser Doppelbock Dunkel","Klosterbrauerei Andechs","Bock - Doppelbock","7.1"],
+  ["Salvator","Paulaner Brauerei","Bock - Doppelbock","7.9"],
+  ["Vitus","Weihenstephaner","Bock - Weizenbock","7.7"],
+  ["Uerige Sticke","Uerige Obergärige Hausbrauerei","Altbier - Sticke / Latzenbier","6.5"],
+  ["Uerige Alt","Uerige Obergärige Hausbrauerei","Altbier - Traditional","4.7"],
+  ["Früh Kölsch","Cölner Hofbräu Früh","Kölsch","4.8"],
+  ["Köstritzer Schwarzbier","Köstritzer Schwarzbierbrauerei","Schwarzbier","4.8"],
+  ["Spezial Rauchbier Lager","Brauerei Spezial","Rauchbier","4.9"],
+  ["Aecht Schlenkerla Rauchbier Urbock","Brauerei Heller-Trum","Rauchbier","6.5"],
+  ["St. Georgen Bräu Kellerbier","St. Georgen Bräu","Kellerbier / Zwickelbier","4.9"],
+  ["Budweiser Budvar","Budějovický Budvar","Pilsner - Czech","5"],
+  ["Ayinger Altbairisch Dunkel","Ayinger Privatbrauerei","Lager - Munich Dunkel","5"],
+  // brits & iers, tweede lichting
+  ["London Pride","Fuller's","Bitter - Best","4.7"],
+  ["Fuller's Vintage Ale","Fuller's","Barleywine - English","8.5"],
+  ["Landlord","Timothy Taylor's","Bitter - Best","4.3"],
+  ["Old Peculier","Theakston","Old / Stock Ale","5.6"],
+  ["Taddy Porter","Samuel Smith's","Porter - English","5"],
+  ["Jaipur","Thornbridge Brewery","IPA - American","5.9"],
+  ["Punk IPA","BrewDog","IPA - American","5.4"],
+  ["Sussex Best Bitter","Harvey's","Bitter - Best","4"],
+  ["Skull Splitter","Orkney Brewery","Scotch Ale / Wee Heavy","8.5"],
+  ["Traquair House Ale","Traquair House Brewery","Scotch Ale / Wee Heavy","7.2"],
+  ["O'Hara's Irish Stout","Carlow Brewing Company","Stout - Irish Dry","4.3"],
+  ["Thomas Hardy's Ale","Thomas Hardy's","Barleywine - English","11.7"],
+  // amerikaans, tweede lichting
+  ["Two Hearted Ale","Bell's Brewery","IPA - American","7"],
+  ["Torpedo Extra IPA","Sierra Nevada Brewing","IPA - American","7.2"],
+  ["Bigfoot","Sierra Nevada Brewing","Barleywine - American","9.6"],
+  ["Stone IPA","Stone Brewing","IPA - American","6.9"],
+  ["Arrogant Bastard Ale","Stone Brewing","Strong Ale - American","7.2"],
+  ["Breakfast Stout","Founders Brewing","Stout - Imperial / Double","8.3"],
+  ["All Day IPA","Founders Brewing","IPA - Session","4.7"],
+  ["Bourbon County Brand Stout","Goose Island Beer Co.","Stout - Imperial / Double","14"],
+  ["Brooklyn Lager","Brooklyn Brewery","Lager - Vienna","5.2"],
+  ["Anchor Steam Beer","Anchor Brewing","California Common","4.9"],
+  ["Lagunitas IPA","Lagunitas Brewing","IPA - American","6.2"],
+  // de rest van de wereld
+  ["Beer Geek Breakfast","Mikkeller","Stout - Coffee","7.5"],
+  ["Noa Pecan Mud Cake Stout","Omnipollo","Stout - Imperial / Double Pastry","11"],
+  ["Hitachino Nest White Ale","Kiuchi Brewery","Wheat Beer - Witbier","5.5"],
+  ["Jenlain Ambrée","Brasserie Duyck","Farmhouse Ale - Bière de Garde","7.5"],
+  ["Coopers Sparkling Ale","Coopers Brewery","Blonde / Golden Ale - Other","5.8"]
 ].map(r => ({n:r[0], b:r[1], s:r[2], a:r[3]}));
 
 let proefExtra = null;
@@ -1556,7 +1655,7 @@ const proefTokens = s => String(s || "").toLowerCase().normalize("NFD").replace(
 const PROEF_MARKER = new Set(["ipa","tripel","triple","dubbel","double","quadrupel","quad",
   "bruin","brune","dark","donker","stout","porter","rouge","red","rood","wit","white","weizen","hop",
   "gose","fruit","kriek","framboise","barrel","nitro","session","lite","light","zero","free",
-  "alcoholvrij","alcoholarm","0","00"]);
+  "alcoholvrij","alcoholarm","hazy","neipa","0","00"]);
 /* hele naam als frase, mét lidwoorden: "la chouffe" ⊂ "la chouffe blonde" is een sterk signaal */
 const proefZin = s => String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")
   .replace(/[^a-z0-9]+/g," ").trim();
@@ -1576,10 +1675,13 @@ function matchProeflijst(){
       if (bt.length && !bt.some(t => set.has(t))) continue;
       const ont = proefTokens(o.n);
       if (ont.some(t => !eigen.has(t) && PROEF_MARKER.has(t))) continue;
-      // voorkeur voor de kaalste kandidaat ("Duvel" boven "Duvel Barrel Aged"),
-      // en een bonus als de ene naam letterlijk in de andere zit
+      // extra woorden in de kandidaat die het proefbier niet noemt ("Stone Delicious IPA"
+      // bij "Stone IPA") zijn alleen oké als de ene naam letterlijk in de andere zit
+      // ("Gulden Draak Classic" bij "Gulden Draak")
+      const zinBonus = inZin(pz, zin) || inZin(zin, pz);
       let terug = 0; for (const t of ont) if (eigen.has(t)) terug++;
-      const score = 1 + (ont.length ? terug/ont.length : 0) + (inZin(pz, zin) || inZin(zin, pz) ? 1 : 0);
+      if (terug < ont.length && !zinBonus) continue;
+      const score = 1 + (ont.length ? terug/ont.length : 0) + (zinBonus ? 1 : 0);
       if (score > bestScore){ bestScore = score; best = o; }
     }
     return {n:p.n, b:p.b || "", s:p.s || "", hs:(p.s || "").split(" - ")[0].trim(),
