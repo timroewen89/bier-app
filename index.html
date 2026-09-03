@@ -263,6 +263,8 @@ tr.gekozen td,td.gekozen,.gekozen.lbl,.gekozen.val{background:var(--accent-soft)
   .tabs{width:100%;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
   .tabs::-webkit-scrollbar{display:none}
   .tab{padding:10px 10px 11px;font-size:12px;letter-spacing:.06em;flex:0 0 auto;text-align:center}
+  /* smal scherm: alleen de kernkolommen van de tabellen; alle details staan achter een tik op de rij */
+  .xtra{display:none!important}
   .navmeta{display:none}
   h1{margin:24px 0 10px}
   .lede{font-size:16.5px}
@@ -273,7 +275,8 @@ tr.gekozen td,td.gekozen,.gekozen.lbl,.gekozen.val{background:var(--accent-soft)
   .controls{gap:10px 12px;padding:12px 0 14px;margin-bottom:16px}
   .ctl{flex-wrap:wrap}
   .ctl:has(select),.ctl:has(input){flex:1 1 100%}
-  input[type="search"],select{font-size:16px;min-width:0;max-width:none;flex:1 1 auto;padding:10px 12px}
+  .ctl{min-width:0}
+  input[type="search"],select{font-size:16px;min-width:0;max-width:100%;flex:1 1 auto;padding:10px 12px}
   .chip{font-size:14px;padding:8px 14px}
   .btn{padding:10px 14px;font-size:14px}
   .plotcard{padding:10px 4px 6px}
@@ -289,6 +292,14 @@ tr.gekozen td,td.gekozen,.gekozen.lbl,.gekozen.val{background:var(--accent-soft)
   #stijltabel th:first-child,#stijltabel td:first-child,table.heat th:first-child,table.heat td:first-child{
     position:sticky;left:0;z-index:3;background:var(--surface);box-shadow:1px 0 0 var(--rule)}
   #stijltabel thead th:first-child,table.heat thead th:first-child{background:var(--accent-soft)}
+  /* stijlnaam mag afbreken zodat alle vier de kernkolommen op één schermbreedte passen */
+  #stijltabel td:first-child{white-space:normal;max-width:118px;font-size:13px;line-height:1.25;padding:6px 8px}
+  #stijltabel th:first-child{white-space:normal}
+  thead th .hint{display:none}   /* initialen-hint duwt de wie-kolom te breed */
+  /* biertabel: kern = bier + cijfer + wie; proeftabel: bier + brouwerij + wie al */
+  #biertabel td.bier{white-space:normal;max-width:190px;line-height:1.3;padding:6px 8px}
+  #proeftabel td.bier{white-space:normal;max-width:132px;font-size:14px;line-height:1.3;padding:6px 8px}
+  #proeftabel td.brouw{white-space:normal;max-width:96px;font-size:13px;line-height:1.3;padding:6px 8px}
   /* heat-tabel: alle vijf kolommen op één schermbreedte — aantal-kolom weg, stijlnaam mag afbreken */
   table.heat th:nth-child(2),table.heat td:nth-child(2){display:none}
   table.heat td:first-child{white-space:normal;max-width:104px;font-size:13px;line-height:1.25;padding:4px 6px}
@@ -554,7 +565,7 @@ tr.gekozen td,td.gekozen,.gekozen.lbl,.gekozen.val{background:var(--accent-soft)
 </footer>
 </div>
 
-<div id="tip" role="status" aria-live="polite"></div>
+<div id="tip"></div>
 
 <div id="sheet" class="sheet" hidden role="dialog" aria-modal="true" aria-label="Details">
   <div class="sheet-achter" id="sheetachter"></div>
@@ -623,6 +634,7 @@ function gemCijfer(c){
 }
 const nl = (v,d=2) => v == null || isNaN(v) ? "—" : v.toFixed(d).replace(".",",");
 const K = () => AANWEZIG.filter(Boolean).length;
+const debounce = (f, ms) => { let t; return () => { clearTimeout(t); t = setTimeout(f, ms); }; };
 
 /* ---------- afgeleide stijlstatistiek ---------- */
 let STIJLSTAT = [], HOOFDSTAT = [];
@@ -719,15 +731,20 @@ function koppel(el, html, acties = []){
   } else {
     el.addEventListener("mousemove", e => toon(inhoud(), e));
     el.addEventListener("mouseleave", verberg);
-    if (acties.length) el.addEventListener("click", e => { if (binnenLink(e)) return; acties[0].f(); });
+    if (acties.length) el.addEventListener("click", e => { if (binnenLink(e) || String(getSelection())) return; acties[0].f(); });
   }
   if (acties.length || AANRAKEN) el.classList.add("tik");
 }
 
 /* ---------- navigatie ---------- */
 /* stijl: een hoofdstijlnaam (string), of {sub:"IPA - Session"} voor één substijl */
+let huidigeView = "kaart", kaartVuil = false;
 function ganaar(view, stijl){
-  document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", String(t.dataset.view === view)));
+  huidigeView = view;
+  document.querySelectorAll(".tab").forEach(t => {
+    t.setAttribute("aria-selected", String(t.dataset.view === view));
+    t.tabIndex = t.dataset.view === view ? 0 : -1;
+  });
   document.getElementById("view-kaart").hidden = view !== "kaart";
   document.getElementById("view-bieren").hidden = view !== "bieren";
   document.getElementById("view-profiel").hidden = view !== "profiel";
@@ -742,14 +759,41 @@ function ganaar(view, stijl){
     filters.fam = null; bouwFamChips();
     zetStijlKies();
   }
+  if (view === "kaart" && kaartVuil){ kaartVuil = false; tekenStijlTabel(); tekenKaart(); }
   if (view === "bieren") tekenBieren();
   if (view === "profiel") tekenProfiel();
   if (view === "bbq") tekenBbq();
   if (view === "proef") tekenProef();
   verberg();
   scrollTo({top:0, behavior:"instant"});
-  const q = filters.hoofd ? "?stijl=" + encodeURIComponent(filters.hoofd) : filters.stijl ? "?sub=" + encodeURIComponent(filters.stijl) : "";
-  location.hash = view === "bieren" ? "#bieren" + (stijl != null ? q : "") : view === "profiel" ? "#profiel" : view === "bbq" ? "#bbq" : view === "proef" ? "#proeven" : "#stijlkaart";
+  zetHash();
+}
+/* de url volgt de actieve filters, zodat een gedeelde link dezelfde weergave opent */
+let hashKlaar = false;               // pas schrijven nadat de starthash is gelezen
+function zetHash(){
+  if (!hashKlaar) return;
+  let h = "#stijlkaart";
+  if (huidigeView === "bieren"){
+    const p = new URLSearchParams();
+    if (filters.hoofd) p.set("stijl", filters.hoofd);
+    if (filters.stijl) p.set("sub", filters.stijl);
+    if (filters.fam) p.set("fam", filters.fam);
+    if (filters.aantal) p.set("n", filters.aantal);
+    if (filters.wie.size) p.set("wie", [...filters.wie].join("."));
+    if (filters.zoek.trim()) p.set("q", filters.zoek.trim());
+    const qs = String(p);
+    h = "#bieren" + (qs ? "?" + qs : "");
+  } else if (huidigeView === "profiel") h = "#profiel";
+  else if (huidigeView === "bbq") h = "#bbq";
+  else if (huidigeView === "proef"){
+    const p = new URLSearchParams();
+    if (proefFilter !== "niemand") p.set("toon", proefFilter);
+    if (proefStijl) p.set("stijl", proefStijl);
+    if (proefZoek.trim()) p.set("q", proefZoek.trim());
+    const qs = String(p);
+    h = "#proeven" + (qs ? "?" + qs : "");
+  }
+  history.replaceState(null, "", h);
 }
 function zetStijlKies(){
   const sel = document.getElementById("stijlkies");
@@ -761,7 +805,18 @@ function naarBieren(stijl, wie){
   bouwWieChips();
   ganaar("bieren", stijl);
 }
-document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => ganaar(t.dataset.view)));
+const TABS = [...document.querySelectorAll(".tab")];
+TABS.forEach((t, i) => {
+  t.setAttribute("aria-controls", "view-" + t.dataset.view);
+  t.tabIndex = t.dataset.view === "kaart" ? 0 : -1;
+  t.addEventListener("click", () => ganaar(t.dataset.view));
+  t.addEventListener("keydown", e => {
+    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+    e.preventDefault();
+    const j = (i + (e.key === "ArrowRight" ? 1 : TABS.length - 1)) % TABS.length;
+    TABS[j].focus(); ganaar(TABS[j].dataset.view);
+  });
+});
 
 /* ---------- stijlkaart ---------- */
 const NS = "http://www.w3.org/2000/svg";
@@ -791,7 +846,7 @@ function stijlTip(d){
   const perc = NAMEN.map((nm,i) => AANWEZIG[i] ? `${nm} ${nl(d.aandeel[i],1)}%` : null).filter(Boolean).join(" · ");
   const cijf = NAMEN.map((nm,i) => d.cijPer[i] != null ? `${nm} ${nl(d.cijPer[i],2)}` : null).filter(Boolean).join(" · ");
   const actie = !drill && d.nSub > 1 ? `klik voor de ${d.nSub} substijlen` : "klik voor de bieren";
-  return `<b>${d.h}</b>${drill ? `<br><span style="opacity:.72">${drill}</span>` : ""}<br>${d.n} verschillende bieren · ${d.f}<br>
+  return `<b>${esc(d.h)}</b>${drill ? `<br><span style="opacity:.72">${esc(drill)}</span>` : ""}<br>${d.n} verschillende bieren · ${esc(d.f)}<br>
     gem. ${nl(d.gemAbv,1)}% alcohol · cijfer ${nl(d.gemCij,2)}<br>
     overlap ${nl(d.gedeeld,2)} · ${Math.round(d.soloPct)}% door één persoon<br>
     <span style="opacity:.72">aandeel: ${perc}</span><br>
@@ -830,9 +885,9 @@ function tekenKruimel(){
   if (!drill) return;
   const hs = HOOFDSTAT.find(s => s.h === drill);
   k.innerHTML = `<button type="button" class="terug" id="terugknop">← Alle stijlen</button>
-    <span class="sep">›</span> <strong>${drill}</strong>
-    <span>${hs.n} bieren in ${hs.nSub} substijlen · ${hs.f}</span>
-    <span class="sep">·</span> <span class="link" id="kruimellijst">alle ${drill}-bieren in de lijst</span>`;
+    <span class="sep">›</span> <strong>${esc(drill)}</strong>
+    <span>${hs.n} bieren in ${hs.nSub} substijlen · ${esc(hs.f)}</span>
+    <span class="sep">·</span> <span class="link" id="kruimellijst">alle ${esc(drill)}-bieren in de lijst</span>`;
   document.getElementById("terugknop").addEventListener("click", drillTerug);
   document.getElementById("kruimellijst").addEventListener("click", () => naarBieren(drill));
 }
@@ -974,19 +1029,27 @@ function maakChip(label, n, aan){
   b.innerHTML = label + (n != null ? ` <span class="n">${n}</span>` : "");
   return b;
 }
+/* kolomkop ook met toetsenbord sorteerbaar */
+function sorteerbaar(th, actief, oplopend){
+  th.tabIndex = 0;
+  th.setAttribute("aria-sort", actief ? (oplopend ? "ascending" : "descending") : "none");
+  th.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " "){ e.preventDefault(); th.click(); } });
+}
 
 /* ---------- stijltabel ---------- */
+/* kolommen met xtra verdwijnen op een smal scherm: de kern blijft leesbaar,
+   de rest staat achter een tik op de rij */
 const STIJLKOL = [
   {k:"h",     t:"Stijl",        l:true},
-  {k:"f",     t:"Familie",      l:true, hoofdAlleen:true},
-  {k:"nSub",  t:"Substijlen",   hoofdAlleen:true, f:v=>v>1?String(v):"—"},
+  {k:"f",     t:"Familie",      l:true, hoofdAlleen:true, xtra:true},
+  {k:"nSub",  t:"Substijlen",   hoofdAlleen:true, f:v=>v>1?String(v):"—", xtra:true},
   {k:"n",     t:"Bieren"},
   {k:"gemAbv",t:"Gem. ABV",     f:v=>v==null?"—":nl(v,1)+"%"},
   {k:"gemCij",t:"Gem. cijfer",  f:v=>nl(v,2)},
-  {k:"cijVerschil",t:"Cijferverschil", f:v=>nl(v,2), tip:"Grootste verschil tussen twee personen in hun gemiddelde cijfer voor deze stijl, gecorrigeerd voor ieders eigen strengheid. Vereist minstens 3 cijfers per persoon."},
-  {k:"gedeeld",t:"Overlap",     f:v=>nl(v,2), tip:"Gemiddeld deel van de groep dat een bier uit deze stijl heeft gehad. 0,20 = ieder bier door één persoon; 1,00 = alles door iedereen."},
-  {k:"soloPct",t:"Solo",        f:v=>Math.round(v)+"%"},
-  {k:"alle",  t:"Door allen"}
+  {k:"cijVerschil",t:"Cijferverschil", f:v=>nl(v,2), xtra:true, tip:"Grootste verschil tussen twee personen in hun gemiddelde cijfer voor deze stijl, gecorrigeerd voor ieders eigen strengheid. Vereist minstens 3 cijfers per persoon."},
+  {k:"gedeeld",t:"Overlap",     f:v=>nl(v,2), xtra:true, tip:"Gemiddeld deel van de groep dat een bier uit deze stijl heeft gehad. 0,20 = ieder bier door één persoon; 1,00 = alles door iedereen."},
+  {k:"soloPct",t:"Solo",        f:v=>Math.round(v)+"%", xtra:true},
+  {k:"alle",  t:"Door allen",   xtra:true}
 ];
 const stijlKolommen = () => STIJLKOL.filter(c => !(drill && c.hoofdAlleen));
 let stijlSort = {k:"n", op:false};
@@ -994,7 +1057,7 @@ function tekenStijlKop(){
   const tr = document.getElementById("stijlkop"); tr.textContent = "";
   stijlKolommen().forEach(c => {
     const th = document.createElement("th");
-    th.className = c.l ? "l" : "";
+    th.className = (c.l ? "l" : "") + (c.xtra ? " xtra" : "");
     if (c.tip) th.title = c.tip;
     th.innerHTML = c.t + (stijlSort.k === c.k ? `<span class="arw">${stijlSort.op ? "▲" : "▼"}</span>` : "");
     th.addEventListener("click", () => {
@@ -1002,6 +1065,7 @@ function tekenStijlKop(){
       else { stijlSort.k = c.k; stijlSort.op = (c.k === "h" || c.k === "f"); }
       tekenStijlKop(); tekenStijlTabel();
     });
+    sorteerbaar(th, stijlSort.k === c.k, stijlSort.op);
     tr.appendChild(th);
   });
 }
@@ -1024,9 +1088,9 @@ function tekenStijlTabel(){
     const tr = document.createElement("tr");
     stijlKolommen().forEach(c => {
       const td = document.createElement("td");
-      if (c.l) td.className = "l";
+      td.className = (c.l ? "l" : "") + (c.xtra ? " xtra" : "");
       const v = s[c.k];
-      if (c.k === "h") td.innerHTML = `<span class="stijlklik">${v}</span>`;
+      if (c.k === "h") td.innerHTML = `<span class="stijlklik">${esc(v)}</span>`;
       else td.textContent = c.f ? c.f(v) : (v ?? "—");
       tr.appendChild(td);
     });
@@ -1056,7 +1120,7 @@ function tekenStats(){
     ["Zwaarste stijl", zwaarste ? zwaarste.h : "—", zwaarste ? `gem. ${nl(zwaarste.gemAbv,1)}% alcohol` : ""]
   ];
   document.getElementById("kaartstats").innerHTML = tegels.map(([l,v,f]) =>
-    `<div class="card stat"><p class="lab">${l}</p><p class="val"${v.length > 18 ? ' style="font-size:19px"' : ""}>${v}</p><p class="fig">${f}</p></div>`).join("");
+    `<div class="card stat"><p class="lab">${l}</p><p class="val"${v.length > 18 ? ' style="font-size:19px"' : ""}>${esc(v)}</p><p class="fig">${esc(f)}</p></div>`).join("");
   document.getElementById("navmeta").textContent =
     `${RIJEN.length} bieren · ${K()}/5 lijsten`;
 }
@@ -1066,9 +1130,9 @@ const filters = {zoek:"", hoofd:null, stijl:"", fam:null, wie:new Set(), aantal:
 let bierSort = {k:"n", op:true};
 const BIERKOL = [
   {k:"n", t:"Bier", l:true, cls:"bier"},
-  {k:"b", t:"Brouwerij", l:true, cls:"brouw"},
-  {k:"stijlnaam", t:"Stijl", l:true, cls:"stijl"},
-  {k:"abv", t:"ABV", f:v=>isNaN(v)?"—":nl(v,1)+"%"},
+  {k:"b", t:"Brouwerij", l:true, cls:"brouw", xtra:true},
+  {k:"stijlnaam", t:"Stijl", l:true, cls:"stijl", xtra:true},
+  {k:"abv", t:"ABV", f:v=>isNaN(v)?"—":nl(v,1)+"%", xtra:true},
   {k:"gem", t:"Cijfer", f:v=>nl(v,2)},
   {k:"aant", t:"Wie", wie:true}
 ];
@@ -1076,7 +1140,7 @@ function tekenBierKop(){
   const tr = document.getElementById("bierkop"); tr.textContent = "";
   BIERKOL.forEach(c => {
     const th = document.createElement("th");
-    th.className = c.l ? "l" : "";
+    th.className = (c.l ? "l" : "") + (c.xtra ? " xtra" : "");
     th.innerHTML = (c.wie ? `Wie <span class="hint" style="text-transform:none;letter-spacing:0">(${NAMEN.filter((_,i)=>AANWEZIG[i]).map(n=>n[0]).join(" ")})</span>` : c.t)
       + (bierSort.k === c.k ? `<span class="arw">${bierSort.op ? "▲" : "▼"}</span>` : "");
     th.addEventListener("click", () => {
@@ -1084,6 +1148,7 @@ function tekenBierKop(){
       else { bierSort.k = c.k; bierSort.op = (c.k === "n" || c.k === "b" || c.k === "stijlnaam"); }
       tekenBierKop(); tekenBieren();
     });
+    sorteerbaar(th, bierSort.k === c.k, bierSort.op);
     tr.appendChild(th);
   });
 }
@@ -1117,7 +1182,7 @@ function tekenBieren(){
     const tr = document.createElement("tr");
     BIERKOL.forEach(c => {
       const td = document.createElement("td");
-      if (c.l) td.className = "l " + (c.cls || "");
+      td.className = (c.l ? "l " + (c.cls || "") : "") + (c.xtra ? " xtra" : "");
       if (c.wie) {
         td.innerHTML = `<span class="wie">${NAMEN.map((nm,i) =>
           `<i class="${!AANWEZIG[i] ? "leeg" : (o.w & (1<<i) ? "aan" : "")}" title="${nm}"></i>`).join("")}</span>`;
@@ -1131,7 +1196,7 @@ function tekenBieren(){
       tr.appendChild(td);
     });
     const wieTekst = NAMEN.filter((_,i) => o.w & (1<<i)).join(", ") || "niemand";
-    const cijfers = NAMEN.map((nm,i) => o.c[i] ? `${nm} ${o.c[i]}` : null).filter(Boolean).join(" · ") || "geen cijfers";
+    const cijfers = NAMEN.map((nm,i) => o.c[i] ? `${nm} ${esc(o.c[i])}` : null).filter(Boolean).join(" · ") || "geen cijfers";
     const html = `<b>${esc(o.n)}</b><br>${esc(o.b)}<br>${esc(o.stijlnaam)} · ${isNaN(o.abv)?"—":nl(o.abv,1)+"%"}<br>
       gedronken door ${wieTekst}<br><span style="opacity:.72">${cijfers}</span>`;
     koppel(tr, html, AANRAKEN ? [{t:`Meer van ${o.b}`, f:() => { filters.zoek = o.b; document.getElementById("zoek").value = o.b; tekenBieren(); }}] : []);
@@ -1141,12 +1206,13 @@ function tekenBieren(){
   document.getElementById("geenresultaat").hidden = data.length > 0;
 
   const stukken = [`<strong style="color:var(--ink)">${data.length}</strong> van ${RIJEN.length} bieren`];
-  if (filters.hoofd) stukken.push(`stijl: ${filters.hoofd}`);
-  if (filters.stijl) stukken.push(`substijl: ${filters.stijl}`);
-  if (filters.fam) stukken.push(`familie: ${filters.fam}`);
+  if (filters.hoofd) stukken.push(`stijl: ${esc(filters.hoofd)}`);
+  if (filters.stijl) stukken.push(`substijl: ${esc(filters.stijl)}`);
+  if (filters.fam) stukken.push(`familie: ${esc(filters.fam)}`);
   if (filters.wie.size) stukken.push("wie: " + [...filters.wie].map(i => NAMEN[i]).join(" + "));
   if (filters.aantal) stukken.push(`door ${filters.aantal} ${filters.aantal === "1" ? "persoon" : "personen"}`);
   document.getElementById("telling").innerHTML = stukken.join(" &nbsp;·&nbsp; ");
+  zetHash();
 }
 
 /* ---------- wie-chips ---------- */
@@ -1174,14 +1240,13 @@ function bouwStijlKies(){
     if (!g) { g = {n:0, subs:new Map()}; perH.set(o.h, g); }
     g.n++; g.subs.set(vol, (g.subs.get(vol)||0)+1);
   });
-  const esc = s => s.replace(/"/g,"&quot;");
   const hoofden = [...perH.keys()].sort((a,b) => a.localeCompare(b,"nl"));
   sel.innerHTML = `<option value="">alle stijlen (${RIJEN.length})</option>` + hoofden.map(h => {
     const g = perH.get(h);
     const subs = [...g.subs.keys()].sort((a,b) => a.localeCompare(b,"nl"));
-    if (subs.length === 1 && subs[0] === h) return `<option value="h:${esc(h)}">${h} (${g.n})</option>`;
-    return `<optgroup label="${esc(h)}"><option value="h:${esc(h)}">alle ${h} (${g.n})</option>` +
-      subs.map(s => `<option value="s:${esc(s)}">&nbsp;&nbsp;${subNaam(s)} (${g.subs.get(s)})</option>`).join("") + `</optgroup>`;
+    if (subs.length === 1 && subs[0] === h) return `<option value="h:${esc(h)}">${esc(h)} (${g.n})</option>`;
+    return `<optgroup label="${esc(h)}"><option value="h:${esc(h)}">alle ${esc(h)} (${g.n})</option>` +
+      subs.map(s => `<option value="s:${esc(s)}">&nbsp;&nbsp;${esc(subNaam(s))} (${g.subs.get(s)})</option>`).join("") + `</optgroup>`;
   }).join("");
   zetStijlKies();
 }
@@ -1479,7 +1544,7 @@ function tekenBbq(){
       li.innerHTML = `<span class="naam" title="${esc(o.n)}">${esc(o.n)}</span>
         <span class="cijf">${nl(o.gem,2)} · ${x.n}×</span>`;
       const wieTekst = NAMEN.filter((_,i) => o.w & (1<<i)).join(", ") || "niemand";
-      const cijfers = NAMEN.map((nm,i) => o.c[i] ? `${nm} ${o.c[i]}` : null).filter(Boolean).join(" · ") || "geen cijfers";
+      const cijfers = NAMEN.map((nm,i) => o.c[i] ? `${nm} ${esc(o.c[i])}` : null).filter(Boolean).join(" · ") || "geen cijfers";
       const html = `<b>${esc(o.n)}</b><br>${esc(o.b)}<br>${esc(STIJLEN[o.s])} · ${isNaN(o.abv)?"—":nl(o.abv,1)+"%"}<br>
         gedronken door ${wieTekst}<br><span style="opacity:.72">${cijfers}</span>`;
       koppel(li, html, [{t:"In de lijst opzoeken", f:() => zoekBierInLijst(o)}]);
@@ -1734,15 +1799,15 @@ function bouwProefStijl(){
 const PROEFKOL = [
   {k:"n",    t:"Bier",      l:true, cls:"bier"},
   {k:"b",    t:"Brouwerij", l:true, cls:"brouw"},
-  {k:"s",    t:"Stijl",     l:true, cls:"stijl"},
-  {k:"abv",  t:"ABV",       f:v=>isNaN(v)?"—":nl(v,1)+"%"},
+  {k:"s",    t:"Stijl",     l:true, cls:"stijl", xtra:true},
+  {k:"abv",  t:"ABV",       f:v=>isNaN(v)?"—":nl(v,1)+"%", xtra:true},
   {k:"aant", t:"Wie al",    wie:true}
 ];
 function tekenProefKop(){
   const tr = document.getElementById("proefkop"); tr.textContent = "";
   PROEFKOL.forEach(c => {
     const th = document.createElement("th");
-    th.className = c.l ? "l" : "";
+    th.className = (c.l ? "l" : "") + (c.xtra ? " xtra" : "");
     th.innerHTML = (c.wie ? `Wie al <span class="hint" style="text-transform:none;letter-spacing:0">(${NAMEN.filter((_,i)=>AANWEZIG[i]).map(n=>n[0]).join(" ")})</span>` : c.t)
       + (proefSort.k === c.k ? `<span class="arw">${proefSort.op ? "▲" : "▼"}</span>` : "");
     th.addEventListener("click", () => {
@@ -1750,6 +1815,7 @@ function tekenProefKop(){
       else { proefSort.k = c.k; proefSort.op = (c.k === "n" || c.k === "b" || c.k === "s" || c.k === "aant"); }
       tekenProefKop(); tekenProef();
     });
+    sorteerbaar(th, proefSort.k === c.k, proefSort.op);
     tr.appendChild(th);
   });
 }
@@ -1802,7 +1868,7 @@ function tekenProef(){
     const tr = document.createElement("tr");
     PROEFKOL.forEach(c => {
       const td = document.createElement("td");
-      if (c.l) td.className = "l " + (c.cls || "");
+      td.className = (c.l ? "l " + (c.cls || "") : "") + (c.xtra ? " xtra" : "");
       if (c.wie) {
         const w = p.m ? p.m.w : 0;
         td.innerHTML = `<span class="wie">${NAMEN.map((nm,i) =>
@@ -1817,7 +1883,7 @@ function tekenProef(){
     let html;
     if (p.m) {
       const wieTekst = NAMEN.filter((_,i) => p.m.w & (1<<i)).join(", ") || "niemand";
-      const cijfers = NAMEN.map((nm,i) => p.m.c[i] ? `${nm} ${p.m.c[i]}` : null).filter(Boolean).join(" · ") || "geen cijfers";
+      const cijfers = NAMEN.map((nm,i) => p.m.c[i] ? `${nm} ${esc(p.m.c[i])}` : null).filter(Boolean).join(" · ") || "geen cijfers";
       html = `<b>${esc(p.n)}</b><br>${esc(p.b)}${p.s ? " · " + esc(p.s) : ""}<br>
         in jullie lijsten als: ${esc(p.m.n)} (${esc(p.m.b)})<br>
         gedronken door ${wieTekst}<br><span style="opacity:.72">${cijfers}</span>`;
@@ -1836,9 +1902,11 @@ function tekenProef(){
   if (proefFilter !== "alles") stukken.push(proefFilter === "niemand" ? "nog door niemand gedronken" : "al gedronken");
   if (q) stukken.push(`zoekterm: ${esc(q)}`);
   document.getElementById("proeftelling").innerHTML = stukken.join(" &nbsp;·&nbsp; ");
+  zetHash();
 }
 
-document.getElementById("proefzoek").addEventListener("input", e => { proefZoek = e.target.value; tekenProef(); });
+const proefLater = debounce(tekenProef, 150);
+document.getElementById("proefzoek").addEventListener("input", e => { proefZoek = e.target.value; proefLater(); });
 document.getElementById("proefstijl").addEventListener("change", e => { proefStijl = e.target.value; tekenProef(); });
 document.getElementById("proefbestand").addEventListener("change", ev => {
   const f = ev.target.files[0]; if (!f) return;
@@ -1880,7 +1948,8 @@ document.getElementById("proefwis").addEventListener("click", () => {
 /* ---------- events ---------- */
 document.getElementById("asview").addEventListener("change", tekenKaart);
 document.getElementById("minbier").addEventListener("change", () => { tekenKaart(); tekenStijlTabel(); });
-document.getElementById("zoek").addEventListener("input", e => { filters.zoek = e.target.value; tekenBieren(); });
+const zoekLater = debounce(tekenBieren, 150);
+document.getElementById("zoek").addEventListener("input", e => { filters.zoek = e.target.value; zoekLater(); });
 document.getElementById("stijlkies").addEventListener("change", e => {
   const v = e.target.value;
   filters.hoofd = v.startsWith("h:") ? v.slice(2) : null;
@@ -1904,7 +1973,14 @@ function herbouw(){
   berekenStijlen();
   PROEFDATA = null;                       // eigen lijsten veranderd -> proeflijst opnieuw matchen
   bouwFamChips(); bouwWieChips(); bouwStijlKies(); bouwImport(); bouwProfChips();
-  tekenKruimel(); tekenStats(); tekenStijlKop(); tekenStijlTabel(); tekenKaart(); tekenBierKop(); tekenBieren(); tekenProfiel(); tekenBbq(); tekenProefKop(); tekenProef();
+  tekenKruimel(); tekenStats(); tekenStijlKop(); tekenBierKop(); tekenProefKop();
+  // alleen het zichtbare tabblad tekenen; de andere volgen bij het wisselen (ganaar)
+  kaartVuil = huidigeView !== "kaart";
+  if (!kaartVuil){ tekenStijlTabel(); tekenKaart(); }
+  if (huidigeView === "bieren") tekenBieren();
+  if (huidigeView === "profiel") tekenProfiel();
+  if (huidigeView === "bbq") tekenBbq();
+  if (huidigeView === "proef") tekenProef();
 }
 herbouw();
 if (AANRAKEN) {
@@ -1912,14 +1988,28 @@ if (AANRAKEN) {
   document.getElementById("tabelhint").textContent = "Tik een kolomkop aan om te sorteren, een rij voor de details.";
 }
 
-const h = location.hash;
-if (h.startsWith("#bieren")){
-  const m = h.match(/stijl=([^&]+)/), ms = h.match(/sub=([^&]+)/);
-  ganaar("bieren", m ? decodeURIComponent(m[1]) : ms ? {sub: decodeURIComponent(ms[1])} : null);
-} else if (h.startsWith("#profiel")) ganaar("profiel");
-else if (h.startsWith("#bbq")) ganaar("bbq");
-else if (h.startsWith("#proeven")) ganaar("proef");
-addEventListener("resize", () => { clearTimeout(window.__rt); window.__rt = setTimeout(tekenKaart, 180); });
+const STARTHASH = location.hash;
+const startQ = (() => { const i = STARTHASH.indexOf("?"); return new URLSearchParams(i < 0 ? "" : STARTHASH.slice(i + 1)); })();
+hashKlaar = true;
+if (STARTHASH.startsWith("#bieren")){
+  ganaar("bieren", startQ.get("stijl") || (startQ.get("sub") ? {sub: startQ.get("sub")} : null));
+  let extraF = false;
+  if (startQ.get("fam")) { filters.fam = startQ.get("fam"); extraF = true; }
+  if (startQ.get("n")) { filters.aantal = startQ.get("n"); document.getElementById("aantalkies").value = filters.aantal; extraF = true; }
+  if (startQ.get("wie")) { filters.wie = new Set(startQ.get("wie").split(".").map(Number).filter(i => i >= 0 && i < NAMEN.length)); extraF = true; }
+  if (startQ.get("q")) { filters.zoek = startQ.get("q"); document.getElementById("zoek").value = filters.zoek; extraF = true; }
+  if (extraF){ bouwFamChips(); bouwWieChips(); tekenBieren(); }
+} else if (STARTHASH.startsWith("#profiel")) ganaar("profiel");
+else if (STARTHASH.startsWith("#bbq")) ganaar("bbq");
+else if (STARTHASH.startsWith("#proeven")){
+  if (["alles","gehad","niemand"].includes(startQ.get("toon"))) proefFilter = startQ.get("toon");
+  if (startQ.get("q")) { proefZoek = startQ.get("q"); document.getElementById("proefzoek").value = proefZoek; }
+  if (startQ.get("stijl")) proefStijl = startQ.get("stijl");
+  ganaar("proef");
+}
+addEventListener("resize", () => { clearTimeout(window.__rt); window.__rt = setTimeout(() => {
+  if (huidigeView === "kaart") tekenKaart(); else kaartVuil = true;   // verborgen svg heeft breedte 0
+}, 180); });
 </script>
 </body>
 </html>
