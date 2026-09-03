@@ -514,6 +514,10 @@ tr.gekozen td,td.gekozen,.gekozen.lbl,.gekozen.val{background:var(--accent-soft)
       <input type="search" id="proefzoek" placeholder="Zoek in de proeflijst…" aria-label="Zoek in de proeflijst">
     </div>
     <div class="ctl">
+      <label for="proefstijl">Stijl</label>
+      <select id="proefstijl"><option value="">alle stijlen</option></select>
+    </div>
+    <div class="ctl">
       <label style="align-self:center">Toon</label>
       <div class="chips" id="proefchips"></div>
     </div>
@@ -1533,7 +1537,7 @@ const PROEF_START = [
 let proefExtra = null;
 try { proefExtra = JSON.parse(localStorage.getItem(PROEF_OPSLAG) || "null"); } catch(e){ proefExtra = null; }
 let PROEFDATA = null;                      // gematchte lijst; null = opnieuw berekenen
-let proefFilter = "niemand", proefZoek = "";
+let proefFilter = "niemand", proefZoek = "", proefStijl = "";
 let proefSort = {k:"aant", op:true};
 
 /* namen verschillen altijd nét tussen lijsten ("St. Bernardus Abt 12" vs "Abt 12"), dus we
@@ -1578,8 +1582,22 @@ function matchProeflijst(){
       const score = 1 + (ont.length ? terug/ont.length : 0) + (inZin(pz, zin) || inZin(zin, pz) ? 1 : 0);
       if (score > bestScore){ bestScore = score; best = o; }
     }
-    return {n:p.n, b:p.b || "", s:p.s || "", abv:parseFloat(p.a), m:best, aant:best ? best.aant : 0};
+    return {n:p.n, b:p.b || "", s:p.s || "", hs:(p.s || "").split(" - ")[0].trim(),
+            abv:parseFloat(p.a), m:best, aant:best ? best.aant : 0};
   });
+  bouwProefStijl();
+}
+
+/* stijl-dropdown: hoofdstijlen uit de actuele proeflijst, met aantallen */
+function bouwProefStijl(){
+  const sel = document.getElementById("proefstijl");
+  const tel = new Map();
+  PROEFDATA.forEach(p => { const k = p.hs || "(zonder stijl)"; tel.set(k, (tel.get(k)||0)+1); });
+  const namen = [...tel.keys()].sort((a,b) => a.localeCompare(b,"nl"));
+  sel.innerHTML = `<option value="">alle stijlen (${PROEFDATA.length})</option>` +
+    namen.map(h => `<option value="${esc(h)}">${esc(h)} (${tel.get(h)})</option>`).join("");
+  if (proefStijl && !tel.has(proefStijl)) proefStijl = "";
+  sel.value = proefStijl;
 }
 
 const PROEFKOL = [
@@ -1619,15 +1637,19 @@ function tekenProef(){
     ["Door iedereen", String(iedereen.length), "compleet afgevinkt"]
   ].map(([l,v,f]) => `<div class="card stat"><p class="lab">${l}</p><p class="val">${v}</p><p class="fig">${f}</p></div>`).join("");
 
+  const basis = proefStijl ? alles.filter(p => (p.hs || "(zonder stijl)") === proefStijl) : alles;
+
   const ch = document.getElementById("proefchips"); ch.textContent = "";
-  [["niemand","Nog niemand",niemand.length],["gehad","Al gedronken",gehad.length],["alles","Alles",alles.length]].forEach(([k,t,n]) => {
+  [["niemand","Nog niemand",basis.filter(p => !p.m).length],
+   ["gehad","Al gedronken",basis.filter(p => p.m).length],
+   ["alles","Alles",basis.length]].forEach(([k,t,n]) => {
     const b = maakChip(t, n, proefFilter === k);
     b.addEventListener("click", () => { proefFilter = k; tekenProef(); });
     ch.appendChild(b);
   });
 
   const q = proefZoek.trim().toLowerCase();
-  let data = alles.filter(p => proefFilter === "alles" || (proefFilter === "niemand" ? !p.m : !!p.m));
+  let data = basis.filter(p => proefFilter === "alles" || (proefFilter === "niemand" ? !p.m : !!p.m));
   if (q) data = data.filter(p => p.n.toLowerCase().includes(q) || p.b.toLowerCase().includes(q) || p.s.toLowerCase().includes(q));
 
   const {k, op} = proefSort;
@@ -1679,12 +1701,14 @@ function tekenProef(){
   document.getElementById("proefleeg").hidden = data.length > 0;
 
   const stukken = [`<strong style="color:var(--ink)">${data.length}</strong> van ${alles.length} op de proeflijst`];
+  if (proefStijl) stukken.push(`stijl: ${esc(proefStijl)}`);
   if (proefFilter !== "alles") stukken.push(proefFilter === "niemand" ? "nog door niemand gedronken" : "al gedronken");
   if (q) stukken.push(`zoekterm: ${esc(q)}`);
   document.getElementById("proeftelling").innerHTML = stukken.join(" &nbsp;·&nbsp; ");
 }
 
 document.getElementById("proefzoek").addEventListener("input", e => { proefZoek = e.target.value; tekenProef(); });
+document.getElementById("proefstijl").addEventListener("change", e => { proefStijl = e.target.value; tekenProef(); });
 document.getElementById("proefbestand").addEventListener("change", ev => {
   const f = ev.target.files[0]; if (!f) return;
   const m = document.getElementById("proefmelding");
