@@ -510,7 +510,7 @@ tr.gekozen td,td.gekozen,.gekozen.lbl,.gekozen.val{background:var(--accent-soft)
 <main id="view-bbq" role="tabpanel" aria-labelledby="tab-bbq" hidden>
   <h1>Bier bij de barbecue</h1>
   <p class="lede">Welke stijlen passen bij wat er op het rooster ligt — met bij elk gerecht de best beoordeelde bieren uit jullie eigen lijsten als boodschappenlijstje.</p>
-  <p class="hint" id="bbqhint" style="margin:8px 0 0">Klik een stijl om alle bieren erin te zien; klik een aanrader om hem in de lijst op te zoeken.</p>
+  <p class="hint" id="bbqhint" style="margin:8px 0 0">Klik een stijl om alle bieren erin te zien, een aanrader om hem in de lijst op te zoeken, of een nog-te-proeven bier om hem op de proeflijst te vinden.</p>
   <div class="prof-grid" id="bbqgrid" style="margin-top:20px"></div>
 </main>
 
@@ -1508,15 +1508,24 @@ function zoekBierInLijst(o){
   ganaar("bieren");
 }
 
+function zoekInProeflijst(p){
+  proefZoek = p.n; proefFilter = "alles"; proefStijl = "";
+  document.getElementById("proefzoek").value = p.n;
+  const sel = document.getElementById("proefstijl"); if (sel.options.length) sel.value = "";
+  ganaar("proef");
+}
+
 function tekenBbq(){
   const grid = document.getElementById("bbqgrid"); grid.textContent = "";
   const prior = 3.3;   // zelfde demping als bij de witte vlekken: één cijfer telt minder zwaar dan drie eensgezinde
+  if (!PROEFDATA) matchProeflijst();
   BBQ.forEach(d => {
     const kaart = document.createElement("div"); kaart.className = "card paneel";
     kaart.innerHTML = `<h3>${esc(d.g)}</h3><p class="sub">${esc(d.sub)}</p>
       <p class="bbq-waarom">${d.waarom}</p>
       <p class="bbq-kop">Passende stijlen</p><div class="chips bbq-stijlen"></div>
-      <p class="bbq-kop">Uit jullie eigen lijsten</p><ul class="lijstje"></ul>`;
+      <p class="bbq-kop">Uit jullie eigen lijsten</p><ul class="lijstje"></ul>
+      <p class="bbq-kop bbq-proefkop" style="margin-top:14px" hidden>Nog te proeven — had niemand ooit</p><ul class="lijstje bbq-proeflijst"></ul>`;
     const chips = kaart.querySelector(".bbq-stijlen");
     d.stijlen.forEach(h => {
       const st = HOOFDSTAT.find(s => s.h === h);
@@ -1543,6 +1552,20 @@ function tekenBbq(){
       koppel(li, html, [{t:"In de lijst opzoeken", f:() => zoekBierInLijst(o)}]);
       li.querySelector(".naam").addEventListener("click", () => zoekBierInLijst(o));
       ul.appendChild(li);
+    });
+    // passende bieren van de proeflijst die niemand van de vijf ooit had
+    const proef = PROEFDATA.filter(p => !p.m && d.stijlen.includes(p.hs)).slice(0, 3);
+    const pk = kaart.querySelector(".bbq-proefkop"), pl = kaart.querySelector(".bbq-proeflijst");
+    pk.hidden = !proef.length;
+    proef.forEach(p => {
+      const li = document.createElement("li");
+      li.innerHTML = `<span class="naam" title="${esc(p.n)}">${esc(p.n)}</span>
+        <span class="cijf">${esc(p.b)}${isNaN(p.abv) ? "" : " · " + nl(p.abv,1) + "%"}</span>`;
+      const html = `<b>${esc(p.n)}</b><br>${esc(p.b)}${p.s ? " · " + esc(p.s) : ""}${isNaN(p.abv) ? "" : " · " + nl(p.abv,1) + "%"}<br>
+        <span style="opacity:.72">staat op de proeflijst — nog door niemand van jullie gedronken</span>`;
+      koppel(li, html, [{t:"Op de proeflijst bekijken", f:() => zoekInProeflijst(p)}]);
+      li.querySelector(".naam").addEventListener("click", () => zoekInProeflijst(p));
+      pl.appendChild(li);
     });
     grid.appendChild(kaart);
   });
