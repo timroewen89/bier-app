@@ -1,6 +1,6 @@
 # Bieratlas
 
-Een zelfstandige single-page webapp (één HTML-bestand, geen dependencies) om de bierlijsten van de proefgroep te verkennen: filter op stijl, familie, brouwerij of proever, bekijk scores in de kaartweergave en vergelijk smaakprofielen.
+Een zelfstandige single-page webapp (één HTML-bestand, geen dependencies) om de bierlijsten van de proefgroep te verkennen: filter op stijl, familie, brouwerij of proever, bekijk scores in de kaartweergave, vergelijk smaakprofielen en zie op het BBQ-tabblad welke bierstijlen bij welk vlees of welke vis van de barbecue passen — met aanraders uit de eigen lijsten.
 
 ## Gebruik
 

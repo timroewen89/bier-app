@@ -205,6 +205,11 @@ td.cell .box{display:flex;align-items:center;justify-content:center;height:25px;
 .gelijk tr:last-child td{border-bottom:none}
 .gelijk .balk{display:inline-block;height:8px;background:var(--accent);border-radius:2px;vertical-align:middle;margin-right:8px}
 
+/* bbq */
+.bbq-waarom{font-family:var(--font);font-size:14px;color:var(--ink-2);line-height:1.6;margin:0 0 12px}
+.bbq-stijlen{display:flex;flex-wrap:wrap;gap:5px;margin:0 0 16px}
+.bbq-kop{font-family:var(--font);font-size:11.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);margin:0 0 6px}
+
 /* heat-tabel */
 table.heat td.cell{text-align:center;padding:0;width:64px}
 table.heat td.cell .box{display:flex;align-items:center;justify-content:center;height:26px;margin:3px 3px;border-radius:2px;
@@ -305,6 +310,7 @@ tr.gekozen td,td.gekozen,.gekozen.lbl,.gekozen.val{background:var(--accent-soft)
       <button class="tab" role="tab" id="tab-kaart" aria-selected="true" data-view="kaart">Stijlkaart</button>
       <button class="tab" role="tab" id="tab-bieren" aria-selected="false" data-view="bieren">Alle bieren</button>
       <button class="tab" role="tab" id="tab-profiel" aria-selected="false" data-view="profiel">Profielen</button>
+      <button class="tab" role="tab" id="tab-bbq" aria-selected="false" data-view="bbq">BBQ</button>
     </div>
     <div class="navmeta" id="navmeta"></div>
   </div>
@@ -485,6 +491,14 @@ tr.gekozen td,td.gekozen,.gekozen.lbl,.gekozen.val{background:var(--accent-soft)
     </table>
   </div>
   <div class="heatlegende" id="heatlegende"></div>
+</main>
+
+<!-- ============ BBQ ============ -->
+<main id="view-bbq" role="tabpanel" aria-labelledby="tab-bbq" hidden>
+  <h1>Bier bij de barbecue</h1>
+  <p class="lede">Welke stijlen passen bij wat er op het rooster ligt — met bij elk gerecht de best beoordeelde bieren uit jullie eigen lijsten als boodschappenlijstje.</p>
+  <p class="hint" id="bbqhint" style="margin:8px 0 0">Klik een stijl om alle bieren erin te zien; klik een aanrader om hem in de lijst op te zoeken.</p>
+  <div class="prof-grid" id="bbqgrid" style="margin-top:20px"></div>
 </main>
 
 <footer>
@@ -670,6 +684,7 @@ function ganaar(view, stijl){
   document.getElementById("view-kaart").hidden = view !== "kaart";
   document.getElementById("view-bieren").hidden = view !== "bieren";
   document.getElementById("view-profiel").hidden = view !== "profiel";
+  document.getElementById("view-bbq").hidden = view !== "bbq";
   if (stijl != null) {
     if (typeof stijl === "string") { filters.hoofd = stijl; filters.stijl = ""; }
     else { filters.hoofd = null; filters.stijl = stijl.sub; }
@@ -677,10 +692,11 @@ function ganaar(view, stijl){
   }
   if (view === "bieren") tekenBieren();
   if (view === "profiel") tekenProfiel();
+  if (view === "bbq") tekenBbq();
   verberg();
   scrollTo({top:0, behavior:"instant"});
   const q = filters.hoofd ? "?stijl=" + encodeURIComponent(filters.hoofd) : filters.stijl ? "?sub=" + encodeURIComponent(filters.stijl) : "";
-  location.hash = view === "bieren" ? "#bieren" + (stijl != null ? q : "") : view === "profiel" ? "#profiel" : "#stijlkaart";
+  location.hash = view === "bieren" ? "#bieren" + (stijl != null ? q : "") : view === "profiel" ? "#profiel" : view === "bbq" ? "#bbq" : "#stijlkaart";
 }
 function zetStijlKies(){
   const sel = document.getElementById("stijlkies");
@@ -1334,6 +1350,83 @@ document.querySelectorAll("#heattoggle button").forEach(b => b.addEventListener(
   tekenHeat();
 }));
 
+/* ---------- bbq ---------- */
+/* per gerecht: welke hoofdstijlen erbij passen en waarom; de aanraders komen uit de eigen lijsten */
+const BBQ = [
+  {g:"Steak & biefstuk", sub:"rund: bavette, picanha, entrecote",
+   waarom:"Donkere korst en donker mout zijn familie: de geroosterde tonen van karamel, chocolade en koffie pakken de gegrilde korst op en maken het vlees dieper van smaak.",
+   stijlen:["Stout","Porter","Bock","Brown Ale"]},
+  {g:"Hamburger", sub:"van klassieker tot smash burger",
+   waarom:"Vet en umami vragen om hopbitterheid die de mond schoon snijdt; het karamelmout van een pale ale of red ale sluit aan op gebakken ui en korst.",
+   stijlen:["Pale Ale","IPA","Red Ale"]},
+  {g:"Spareribs & pulled pork", sub:"zoet, plakkerig en rokerig",
+   waarom:"Zoet-plakkerige marinade kan verrassend veel hop hebben, terwijl de karamel van een bock of quadrupel de zoetheid juist omarmt. En rook bij rook: rauchbier is hier op zijn best.",
+   stijlen:["Bock","IPA","Belgian Quadrupel","Rauchbier"]},
+  {g:"Worst van de grill", sub:"braadworst, merguez, chorizo",
+   waarom:"Gekruid en vet: een knisperend droge pils of kellerbier spoelt elke hap schoon; märzen zet er wat moutige body naast zonder de kruiden te overstemmen.",
+   stijlen:["Pilsner","Lager","Kellerbier / Zwickelbier","Märzen"]},
+  {g:"Kip & gevogelte", sub:"hele kip, saté, drumsticks",
+   waarom:"Licht vlees, dus het bier mag niet overheersen: blond, saison en tarwebier brengen frisheid en kruidigheid die gegrilde kip optillen — zeker bij een gemarineerde saté.",
+   stijlen:["Blonde / Golden Ale","Farmhouse Ale","Wheat Beer","Belgian Blonde"]},
+  {g:"Lamsvlees", sub:"koteletten, spiesen",
+   waarom:"De lichte wildsmaak van lam houdt van gedroogd fruit en kruidigheid: een dubbel is de klassieker, een aards-droge saison of Engelse bitter staat er net zo goed naast.",
+   stijlen:["Belgian Dubbel","Farmhouse Ale","Bitter"]},
+  {g:"Zalm & makreel", sub:"vette vis, van rooster of plank",
+   waarom:"Vette vis wil koolzuur en een droge afdronk: saison en kölsch snijden door het vet, en een zachte pale ale geeft de rooksmaak van een cederplank net dat zetje.",
+   stijlen:["Farmhouse Ale","Pale Ale","Kölsch","Wheat Beer"]},
+  {g:"Garnalen & witte vis", sub:"gamba's, dorade, zeebaars",
+   waarom:"Fijn en zilt: hier past licht en fris — pils, witbier of een zurig bier als gose, dat met zout en citroen bijna een spritz bij de schaaldieren is.",
+   stijlen:["Pilsner","Wheat Beer","Sour"]}
+];
+
+function zoekBierInLijst(o){
+  filters.zoek = o.n; filters.hoofd = null; filters.stijl = ""; filters.fam = null; filters.aantal = ""; filters.wie.clear();
+  document.getElementById("zoek").value = o.n;
+  document.getElementById("aantalkies").value = "";
+  zetStijlKies(); bouwFamChips(); bouwWieChips();
+  ganaar("bieren");
+}
+
+function tekenBbq(){
+  const grid = document.getElementById("bbqgrid"); grid.textContent = "";
+  const prior = 3.3;   // zelfde demping als bij de witte vlekken: één cijfer telt minder zwaar dan drie eensgezinde
+  BBQ.forEach(d => {
+    const kaart = document.createElement("div"); kaart.className = "card paneel";
+    kaart.innerHTML = `<h3>${esc(d.g)}</h3><p class="sub">${esc(d.sub)}</p>
+      <p class="bbq-waarom">${d.waarom}</p>
+      <p class="bbq-kop">Passende stijlen</p><div class="chips bbq-stijlen"></div>
+      <p class="bbq-kop">Uit jullie eigen lijsten</p><ul class="lijstje"></ul>`;
+    const chips = kaart.querySelector(".bbq-stijlen");
+    d.stijlen.forEach(h => {
+      const st = HOOFDSTAT.find(s => s.h === h);
+      const b = maakChip(h, st ? st.n : null, false);
+      if (st) b.addEventListener("click", () => ganaar("bieren", h));
+      else { b.disabled = true; b.style.opacity = ".45"; b.title = "nog geen bier van deze stijl in de lijsten"; }
+      chips.appendChild(b);
+    });
+    const kand = RIJEN.filter(o => d.stijlen.includes(o.h) && o.gem != null && o.gem >= 3.25)
+      .map(o => { const r = o.cn.filter(v => v != null); const som = r.reduce((a,b)=>a+b,0);
+                  return {o, n:r.length, score:(som + prior)/(r.length + 1)}; })
+      .sort((a,b) => b.score - a.score).slice(0,4);
+    const ul = kaart.querySelector(".lijstje");
+    if (!kand.length) ul.innerHTML = `<li><span style="color:var(--ink-3)">nog geen goed beoordeeld bier in deze stijlen — mooi excuus om te gaan proeven</span></li>`;
+    kand.forEach(x => {
+      const o = x.o;
+      const li = document.createElement("li");
+      li.innerHTML = `<span class="naam" title="${esc(o.n)}">${esc(o.n)}</span>
+        <span class="cijf">${nl(o.gem,2)} · ${x.n}×</span>`;
+      const wieTekst = NAMEN.filter((_,i) => o.w & (1<<i)).join(", ") || "niemand";
+      const cijfers = NAMEN.map((nm,i) => o.c[i] ? `${nm} ${o.c[i]}` : null).filter(Boolean).join(" · ") || "geen cijfers";
+      const html = `<b>${esc(o.n)}</b><br>${esc(o.b)}<br>${esc(STIJLEN[o.s])} · ${isNaN(o.abv)?"—":nl(o.abv,1)+"%"}<br>
+        gedronken door ${wieTekst}<br><span style="opacity:.72">${cijfers}</span>`;
+      koppel(li, html, [{t:"In de lijst opzoeken", f:() => zoekBierInLijst(o)}]);
+      li.querySelector(".naam").addEventListener("click", () => zoekBierInLijst(o));
+      ul.appendChild(li);
+    });
+    grid.appendChild(kaart);
+  });
+}
+
 /* ---------- events ---------- */
 document.getElementById("asview").addEventListener("change", tekenKaart);
 document.getElementById("minbier").addEventListener("change", () => { tekenKaart(); tekenStijlTabel(); });
@@ -1360,7 +1453,7 @@ function herbouw(){
   if (drill && !RIJEN.some(o => o.h === drill)) drill = null;
   berekenStijlen();
   bouwFamChips(); bouwWieChips(); bouwStijlKies(); bouwImport(); bouwProfChips();
-  tekenKruimel(); tekenStats(); tekenStijlKop(); tekenStijlTabel(); tekenKaart(); tekenBierKop(); tekenBieren(); tekenProfiel();
+  tekenKruimel(); tekenStats(); tekenStijlKop(); tekenStijlTabel(); tekenKaart(); tekenBierKop(); tekenBieren(); tekenProfiel(); tekenBbq();
 }
 herbouw();
 if (AANRAKEN) {
@@ -1373,6 +1466,7 @@ if (h.startsWith("#bieren")){
   const m = h.match(/stijl=([^&]+)/), ms = h.match(/sub=([^&]+)/);
   ganaar("bieren", m ? decodeURIComponent(m[1]) : ms ? {sub: decodeURIComponent(ms[1])} : null);
 } else if (h.startsWith("#profiel")) ganaar("profiel");
+else if (h.startsWith("#bbq")) ganaar("bbq");
 addEventListener("resize", () => { clearTimeout(window.__rt); window.__rt = setTimeout(tekenKaart, 180); });
 </script>
 </body>
